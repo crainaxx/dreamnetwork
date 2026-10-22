@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dream Network · Rüya Ağı</title>
+<meta name="description" content="Rüyalarını Freud ve Jung'a göre yorumlayan ve zaman içinde birbirine bağlayan 3D rüya defteri.">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dream Network">
+<style>
+:root { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+body { margin: 0; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+/* Layout: a rotatable 3D brain of dreams on the left with a control deck under it, the selected entry or the new-dream form on the right (stacked on phones). Single deliberate black-to-aubergine night theme. */
+:root {
+  --bg: #000000;
+  --bg-mid: #0a030b;
+  --bg-deep: #22081f;
+  --panel: rgba(8,5,14,.78);
+  --line: rgba(255,255,255,.14);
+  --line-strong: rgba(255,255,255,.32);
+  --fg: #ffffff;
+  --muted: rgba(255,255,255,.72);
+  --faint: rgba(255,255,255,.5);
+  --dream: #c9a6ff;
+  --symbol: #9a78d0;
+  --theme: #f2c0ff;
+  --person: #ffc6e8;
+  --freud: #ff9ec7;
+  --jung: #b9a0ff;
+  --body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+html { background: var(--bg); }
+body { background: linear-gradient(175deg, var(--bg) 0%, var(--bg) 25%, var(--bg-mid) 60%, var(--bg-deep) 100%); background-color: var(--bg); color: var(--fg); min-height: 100vh; font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1260px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 40px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 18px; }
+h1 { font-weight: 700; font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--fg); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px currentColor; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.sky { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, rgba(70,18,62,.16), rgba(0,0,0,.92) 70%); min-width: 0; }
+.stage { position: relative; height: 600px; touch-action: none; }
+@media (max-width: 900px) { .stage { height: 460px; } }
+.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl { position: absolute; left: 0; top: 0; pointer-events: auto; font: inherit; font-size: 12px; color: var(--fg); letter-spacing: .02em; background: none; border: 0; padding: 2px 4px; cursor: pointer; white-space: nowrap; text-shadow: 0 0 6px #000, 0 0 2px #000; transition: opacity .25s; will-change: transform; }
+.lbl.dream { font-size: 14px; font-weight: 700; }
+.lbl.theme { font-weight: 600; font-size: 12.5px; }
+.lbl.person { font-style: italic; color: var(--person); }
+.lbl.dim { opacity: .16 !important; }
+.lbl:focus-visible { outline: 1px solid var(--dream); border-radius: 4px; }
+.fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+.fx { position: absolute; inset: 0; pointer-events: none; }
+.scan { background: repeating-linear-gradient(to bottom, rgba(255,255,255,.035) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
+.vig { background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,.85) 100%); }
+.hud { position: absolute; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.55); pointer-events: none; font-variant-numeric: tabular-nums; line-height: 1.6; }
+.hud.tl { top: 12px; left: 14px; } .hud.tr { top: 12px; right: 14px; text-align: right; } .hud.bl { bottom: 10px; left: 14px; }
+
+/* control deck */
+.deck { border-top: 1px solid var(--line); padding: 12px 14px 14px; display: grid; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.lab { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); min-width: 64px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 4px 13px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: rgba(255,255,255,.12); color: var(--fg); }
+.seg button + button { border-left: 1px solid var(--line); }
+.tog { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.tog::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.tog[aria-pressed="true"] { color: var(--fg); border-color: var(--line-strong); }
+.tog[aria-pressed="true"]::before { background: var(--theme); box-shadow: 0 0 8px var(--theme); }
+.btn { font: inherit; font-size: 13px; color: var(--fg); background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 14px; cursor: pointer; }
+.btn.primary { background: var(--fg); color: #000; border-color: var(--fg); font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: default; }
+.seg button:focus-visible, .tog:focus-visible, .btn:focus-visible, .chip:focus-visible { outline: 2px solid var(--dream); outline-offset: 2px; }
+.time { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 0; }
+.time input[type=range] { flex: 1; min-width: 0; accent-color: #d9b8ff; }
+.time output { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fg); min-width: 92px; }
+.moods { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; color: var(--muted); }
+.moods span { display: inline-flex; align-items: center; gap: 5px; }
+.moods i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+/* panel */
+article { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 26px; min-width: 0; backdrop-filter: blur(6px); }
+.paneltop { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.kicker { text-transform: uppercase; letter-spacing: .12em; font-size: 11.5px; color: var(--muted); margin: 0; }
+article h2 { font-weight: 700; font-size: 24px; line-height: 1.25; margin: 0 0 12px; text-wrap: balance; }
+article h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .16em; color: var(--fg); margin: 20px 0 6px; font-weight: 600; }
+article h3.freud { color: var(--freud); } article h3.jung { color: var(--jung); }
+article p { margin: 0 0 10px; max-width: 65ch; }
+article ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.meta { font-size: 13.5px; color: var(--muted); }
+.meta b { color: var(--fg); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip { font: inherit; font-size: 13px; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; cursor: pointer; }
+.chip:hover { border-color: var(--dream); }
+.summary { border-left: 2px solid var(--fg); padding-left: 12px; margin-top: 18px; }
+.morning { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.morning .fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.in { font: inherit; font-size: 14px; color: var(--fg); background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+textarea.in { min-height: 150px; resize: vertical; line-height: 1.5; }
+.in:focus { outline: none; border-color: var(--dream); }
+select.in option { background: #120814; }
+form.add { display: grid; gap: 12px; }
+form.add .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.note { font-size: 13px; color: var(--muted); }
+.status { font-size: 13.5px; color: var(--fg); min-height: 1.2em; }
+.status.err { color: var(--freud); }
+footer { margin-top: 18px; font-size: 13px; color: var(--muted); }
+footer a { color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.banner { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13.5px; color: var(--muted); }
+.banner b { color: var(--fg); }
+.danger { color: var(--freud); border-color: rgba(255,158,199,.4); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+footer p { margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-i18n="title"></h1>
+      <p class="sub" data-i18n="sub"></p>
+    </div>
+    <div class="top-actions">
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot" style="background:var(--dream);color:var(--dream)"></i><span data-i18n="lgDream"></span></span>
+        <span><i class="dot" style="background:var(--theme);color:var(--theme)"></i><span data-i18n="lgTheme"></span></span>
+        <span><i class="dot" style="background:var(--symbol);color:var(--symbol)"></i><span data-i18n="lgSymbol"></span></span>
+        <span><i class="dot" style="background:var(--person);color:var(--person)"></i><span data-i18n="lgPerson"></span></span>
+      </div>
+      <div class="seg" role="group" aria-label="Language / Dil">
+        <button type="button" data-lang="tr" aria-pressed="true">TR</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="sky">
+      <div class="stage" id="stage" role="img">
+        <div class="labels" id="labels"></div>
+        <div class="fx scan"></div><div class="fx vig"></div>
+        <div class="hud tl" id="hudL"></div>
+        <div class="hud tr" id="hudR"></div>
+        <div class="hud bl" id="hudB"></div>
+      </div>
+      <div class="deck">
+        <div class="row">
+          <span class="lab" data-i18n="lens"></span>
+          <div class="seg" role="group">
+            <button type="button" data-lens="all" aria-pressed="true" data-i18n="all"></button>
+            <button type="button" data-lens="freud" aria-pressed="false">Freud</button>
+            <button type="button" data-lens="jung" aria-pressed="false">Jung</button>
+          </div>
+          <button type="button" class="tog" id="tMood" aria-pressed="false" data-i18n="moodColors"></button>
+          <button type="button" class="tog" id="tPeople" aria-pressed="false" data-i18n="people"></button>
+          <button type="button" class="tog" id="tSound" aria-pressed="false" data-i18n="sound"></button>
+        </div>
+        <div class="row">
+          <span class="lab" data-i18n="time"></span>
+          <div class="time">
+            <button type="button" class="btn" id="play" data-i18n="play"></button>
+            <input type="range" id="slider" min="0" max="0" value="0" step="1">
+            <output id="sliderOut" for="slider"></output>
+          </div>
+          <button type="button" class="btn" id="spin"></button>
+        </div>
+        <div class="moods" id="moodKey" hidden></div>
+      </div>
+    </div>
+    <article id="panel" aria-live="polite"></article>
+  </div>
+
+  <footer>
+    <p data-i18n="privacy"></p>
+    <p data-i18n="disclaimer"></p>
+  </footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ================= language =================
+const STR = {
+  tr: {
+    title: "Rüya Ağı", sub: "Rüyaların ve sembollerin, taranan bir beynin içindeki nöronlar gibi birbirine bağlandığı yer. Bir nörona dokun, kaydı oku.",
+    lgDream: "Rüya", lgTheme: "Ortak tema", lgSymbol: "Sembol", lgPerson: "Kişi",
+    lens: "Bakış", all: "Hepsi", moodColors: "Ruh hali renkleri", people: "Kişiler", sound: "Ses",
+    time: "Zaman", play: "Oynat", stop: "Durdur", spin: "Döndür", spinStop: "Dönmeyi durdur", noNote: "Not yok",
+    stageLabel: "Rüyaların ve sembollerin üç boyutlu sinir ağı",
+    hudArchive: "Nöral kayıt arşivi", hudStats: (d, n) => `${d} rüya · ${n} düğüm`, hudSync: "Senkron", hudSignal: "Sinyal", hudLayer: "Tarama aktif · katman",
+    privacy: "Rüyaların sadece bu cihazda, bu tarayıcıda saklanır. Yorum için rüya metni Claude'a gönderilir ve bizde saklanmaz.",
+    disclaimer: "Yorumlar eğlence ve kendini tanıma içindir, psikolojik danışmanlığın yerini tutmaz.",
+    demoBanner: "<b>Bunlar örnek rüyalar.</b> İlk rüyanı eklediğinde kendi ağın başlar ve örnekler kaybolur.",
+    addDream: "Rüya ekle", freudSays: "Freud'a göre", jungSays: "Jung'a göre", symbolsHere: "Bu rüyadaki semboller ve temalar", peopleHere: "Kişiler",
+    dayResidue: "Gün artığı", mood: "Ruh hali", sleep: "Uyku", morning: "Sabah notu", pickMood: "Ruh hali seç", sleepPh: "Uyku: 00.30 – 08.00", save: "Kaydet", saved: "Kaydedildi.",
+    sharedTheme: n => `Ortak tema · ${n} rüya`, symbol: "Sembol", person: n => `Kişi · ${n} rüya`,
+    seenIn: "Geçtiği rüyalar", personMany: n => `${n} rüyanda karşına çıktı.`, personOne: "Bir rüyanda karşına çıktı.",
+    newDream: "Yeni rüya", cancel: "Vazgeç", tellDream: "Rüyanı anlat", addNote: "Freud ve Jung'a göre yorumlayıp beyne yeni bir nöron olarak ekleyeceğim.",
+    fDream: "Rüya", fDreamPh: "Hatırladığın gibi, sırasıyla yaz.", fDate: "Tarih", fMood: "Ruh hali", fPick: "Seç", fSleep: "Uyku saati", fDay: "Günün önemli olayı", fDayPh: "O gün ya da önceki gün aklında olan bir şey",
+    go: "Yorumla ve ağa ekle", working: "Yorumlanıyor... Birkaç saniye ile bir dakika arası sürebilir.", added: "Eklendi.",
+    del: "Bu rüyayı sil", delAsk: "Bu rüya silinsin mi? Geri alınamaz.",
+    exportBtn: "Yedeği indir", importBtn: "Yedekten yükle", importDone: n => `${n} rüya yüklendi.`, importBad: "Bu dosya okunamadı.",
+    err: { too_short: "Rüya biraz daha uzun olmalı.", rate_limited: "Şu an çok fazla istek var, bir dakika sonra tekrar dene.", invalid_json: "Yorum düzgün gelmedi, tekrar dener misin?", refused: "Bu rüya yorumlanamadı, biraz farklı anlatmayı dene.", offline: "İnternet bağlantısı yok gibi görünüyor.", other: "Bir sorun çıktı, tekrar dene." },
+    fallback3d: "3 boyutlu görünüm bu cihazda açılamadı. Kayıtları paneldeki bağlantılardan okuyabilirsin.",
+    moods: { calm: "Huzurlu", happy: "Mutlu", curious: "Meraklı", mixed: "Karışık", sad: "Hüzünlü", anxious: "Kaygılı" }
+  },
+  en: {
+    title: "Dream Network", sub: "Where your dreams and their symbols link up like neurons inside a scanned brain. Tap a neuron to read the entry.",
+    lgDream: "Dream", lgTheme: "Shared theme", lgSymbol: "Symbol", lgPerson: "Person",
+    lens: "Lens", all: "All", moodColors: "Mood colours", people: "People", sound: "Sound",
+    time: "Time", play: "Play", stop: "Stop", spin: "Rotate", spinStop: "Stop rotating", noNote: "No note",
+    stageLabel: "A 3D neural network of dreams and symbols",
+    hudArchive: "Neural record archive", hudStats: (d, n) => `${d} dreams · ${n} nodes`, hudSync: "Sync", hudSignal: "Signal", hudLayer: "Scan active · layer",
+    privacy: "Your dreams are stored only on this device, in this browser. To interpret a dream, its text is sent to Claude and is not kept by us.",
+    disclaimer: "Readings are for fun and self-reflection, not a substitute for professional advice.",
+    demoBanner: "<b>These are example dreams.</b> When you add your first dream, your own network begins and the examples disappear.",
+    addDream: "Add a dream", freudSays: "For Freud", jungSays: "For Jung", symbolsHere: "Symbols and themes in this dream", peopleHere: "People",
+    dayResidue: "Day residue", mood: "Mood", sleep: "Sleep", morning: "Morning note", pickMood: "Pick a mood", sleepPh: "Sleep: 00:30 – 08:00", save: "Save", saved: "Saved.",
+    sharedTheme: n => `Shared theme · ${n} dreams`, symbol: "Symbol", person: n => `Person · ${n} dreams`,
+    seenIn: "Appears in", personMany: n => `Appeared in ${n} of your dreams.`, personOne: "Appeared in one of your dreams.",
+    newDream: "New dream", cancel: "Cancel", tellDream: "Tell me your dream", addNote: "I'll read it through Freud and Jung and add it to the brain as a new neuron.",
+    fDream: "Dream", fDreamPh: "Write it as you remember it, in order.", fDate: "Date", fMood: "Mood", fPick: "Pick", fSleep: "Sleep time", fDay: "Notable event that day", fDayPh: "Something on your mind that day or the day before",
+    go: "Interpret and add", working: "Interpreting... this can take from a few seconds to a minute.", added: "Added.",
+    del: "Delete this dream", delAsk: "Delete this dream? This can't be undone.",
+    exportBtn: "Download backup", importBtn: "Restore backup", importDone: n => `${n} dreams restored.`, importBad: "Couldn't read this file.",
+    err: { too_short: "The dream needs to be a little longer.", rate_limited: "Too many requests right now, try again in a minute.", invalid_json: "The reading came back garbled, could you try again?", refused: "This dream couldn't be interpreted, try telling it a bit differently.", offline: "You seem to be offline.", other: "Something went wrong, please try again." },
+    fallback3d: "The 3D view couldn't open on this device. You can still read entries through the links in the panel.",
+    moods: { calm: "Calm", happy: "Happy", curious: "Curious", mixed: "Mixed", sad: "Sad", anxious: "Anxious" }
+  }
+};
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+};
+let lang = store.get("dn.lang", null) || ((navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en");
+const t = (k, ...a) => { const v = STR[lang][k]; return typeof v === "function" ? v(...a) : v; };
+const dateLabel = iso => new Date(iso + "T12:00:00").toLocaleDateString(lang === "tr" ? "tr-TR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+// ================= example dreams (made up, shown until the first real dream) =================
+const DEMO = {
+  tr: [
+    { id: "demo1", iso: "2026-08-03", mood: "curious", title: "Su basmış eski okul",
+      text: "İlkokulumun koridorlarını su basmıştı ama boğulmuyordum, yüzerek sınıftan sınıfa geçiyordum. Öğretmenimin masasının çekmecesinde paslı bir anahtar buldum ve cebime koydum. Zil çaldığında su çekildi.",
+      day: "Eski bir sınıf arkadaşından gelen mesaj.",
+      freud: ["Su basmış okul: bastırılmış eski kaygıların geri dönüşü.", "Öğretmenin masası: otoriteden onay arayışı.", "Anahtar: gizli bir isteğe erişim."],
+      jung: ["Su: bilinçdışı; içinde yüzebilmek, onunla barışık olmak.", "Okul: hâlâ öğrenilmekte olan bir ders.", "Anahtar: yeni bir kapıya hazırlık."],
+      sum: "Freud'a göre geçmişten kalan bir kaygıyla yüzleşme rüyası. Jung'a göre bilinçdışında rahatça yüzüp bir sonraki adımın anahtarını bulduğunu gösteriyor.",
+      themes: [{ label: "Su", freud: "Bastırılmış duyguların taşması.", jung: "Bilinçdışının kendisi." }, { label: "Geçmiş", freud: "Çocukluk izleri.", jung: "Kişisel bilinçdışı." }, { label: "Arayış", freud: "Eksik olanı tamamlama isteği.", jung: "Bireyleşme yolculuğu." }],
+      symbols: [{ label: "Anahtar", freud: "Gizli isteğe erişim.", jung: "Dönüşüme açılan kapı." }, { label: "Su basmış okul", freud: "Eski kaygılar.", jung: "Öğrenilmemiş ders." }],
+      people: ["Öğretmen"] },
+    { id: "demo2", iso: "2026-09-12", mood: "mixed", title: "Uçan tren ve kayıp bavul",
+      text: "Gece bir trene bindim ve tren raylardan kalkıp şehrin üstünde uçmaya başladı. Bavulumu bir türlü bulamıyordum. Tanımadığım biri bana elle çizilmiş bir harita uzattı ve bir sonraki istasyonda inmemi söyledi.",
+      day: "İş başvurusu için son gün.",
+      freud: ["Uçan tren: hızlanan hayat karşısında kontrolü kaybetme korkusu.", "Kayıp bavul: geride bırakılan bir parça ya da kimlik kaygısı.", "Yabancının haritası: dışarıdan yönlendirilme isteği."],
+      jung: ["Yolculuk: bireyleşme yolu.", "Uçmak: sınırları aşma.", "Yabancı: bilge yaşlı arketipi, iç rehber."],
+      sum: "Freud'a göre bir karar öncesindeki kontrol kaygısını gösteriyor. Jung'a göre iç rehberinin sana yolu gösterdiği bir yolculuk rüyası.",
+      themes: [{ label: "Yolculuk", freud: "Değişim kaygısı.", jung: "Bireyleşme yolu." }, { label: "Arayış", freud: "Eksik olanı tamamlama isteği.", jung: "Bireyleşme yolculuğu." }],
+      symbols: [{ label: "Uçan tren", freud: "Kontrol kaybı.", jung: "Sınırları aşma." }, { label: "Kayıp bavul", freud: "Kimlik kaygısı.", jung: "Bırakılması gereken yük." }, { label: "Harita", freud: "Yönlendirilme isteği.", jung: "İç rehberlik." }],
+      people: ["Yabancı"] },
+    { id: "demo3", iso: "2026-10-05", mood: "calm", title: "Denizin altındaki ev",
+      text: "Çocukluğumun geçtiği ev denizin altındaydı ve suyun içinde rahatça nefes alabiliyordum. Büyükannem mutfakta çay demliyordu. Cebimdeki anahtarla hiç açılmayan arka kapıyı açtım, ardında ışıklı bir bahçe vardı.",
+      day: "Büyükannemin eski fotoğraflarına bakmıştım.",
+      freud: ["Su altındaki ev: anne kucağına, güvenli geçmişe dönüş isteği.", "Büyükanne ve çay: şefkat ve doyum.", "Açılmayan kapı: ertelenmiş bir istek."],
+      jung: ["Ev: benliğin kendisi.", "Su altında nefes almak: bilinçdışıyla barışmak.", "Büyükanne: büyük anne arketipi.", "Işıklı bahçe: yeni bir bütünlük."],
+      sum: "Freud'a göre güvenli geçmişe dönme isteğiyle beslenen sakin bir rüya. Jung'a göre ilk rüyadaki anahtarın sonunda kapıyı açtığı bir bütünleşme anı.",
+      themes: [{ label: "Su", freud: "Bastırılmış duyguların taşması.", jung: "Bilinçdışının kendisi." }, { label: "Geçmiş", freud: "Çocukluk izleri.", jung: "Kişisel bilinçdışı." }, { label: "Ev", freud: "Güven ve aidiyet.", jung: "Benlik." }],
+      symbols: [{ label: "Anahtar", freud: "Gizli isteğe erişim.", jung: "Dönüşüme açılan kapı." }, { label: "Işıklı bahçe", freud: "—", jung: "Bütünlük, yeni başlangıç." }, { label: "Çay", freud: "Doyum, şefkat.", jung: "—" }],
+      people: ["Büyükanne"] }
+  ],
+  en: [
+    { id: "demo1", iso: "2026-08-03", mood: "curious", title: "The flooded old school",
+      text: "The corridors of my primary school were flooded, but I wasn't drowning; I swam from classroom to classroom. In my teacher's desk drawer I found a rusty key and put it in my pocket. When the bell rang, the water drained away.",
+      day: "A message from an old classmate.",
+      freud: ["Flooded school: old, repressed worries returning.", "Teacher's desk: seeking approval from authority.", "Key: access to a hidden wish."],
+      jung: ["Water: the unconscious; swimming in it means being at peace with it.", "School: a lesson still being learned.", "Key: readiness for a new door."],
+      sum: "For Freud, a dream about facing an old worry. For Jung, it shows you moving easily through the unconscious and finding the key to your next step.",
+      themes: [{ label: "Water", freud: "Repressed feelings overflowing.", jung: "The unconscious itself." }, { label: "The past", freud: "Traces of childhood.", jung: "The personal unconscious." }, { label: "Searching", freud: "Wish to complete what's missing.", jung: "The path of individuation." }],
+      symbols: [{ label: "Key", freud: "Access to a hidden wish.", jung: "A door to transformation." }, { label: "Flooded school", freud: "Old worries.", jung: "An unlearned lesson." }],
+      people: ["Teacher"] },
+    { id: "demo2", iso: "2026-09-12", mood: "mixed", title: "Flying train, lost suitcase",
+      text: "I boarded a train at night and it lifted off the tracks and flew over the city. I couldn't find my suitcase anywhere. A stranger handed me a hand-drawn map and told me to get off at the next station.",
+      day: "Last day to send a job application.",
+      freud: ["Flying train: fear of losing control as life speeds up.", "Lost suitcase: worry about a part of yourself left behind.", "Stranger's map: a wish to be guided."],
+      jung: ["Journey: the road of individuation.", "Flying: crossing limits.", "Stranger: the wise old guide, your inner compass."],
+      sum: "For Freud, it reflects anxiety about control before a decision. For Jung, it's a journey in which your inner guide shows you the way.",
+      themes: [{ label: "Journey", freud: "Anxiety about change.", jung: "The road of individuation." }, { label: "Searching", freud: "Wish to complete what's missing.", jung: "The path of individuation." }],
+      symbols: [{ label: "Flying train", freud: "Loss of control.", jung: "Crossing limits." }, { label: "Lost suitcase", freud: "Identity worry.", jung: "A burden to let go of." }, { label: "Map", freud: "Wish to be guided.", jung: "Inner guidance." }],
+      people: ["Stranger"] },
+    { id: "demo3", iso: "2026-10-05", mood: "calm", title: "The house under the sea",
+      text: "My childhood home was under the sea and I could breathe easily in the water. My grandmother was brewing tea in the kitchen. With the key in my pocket I opened the back door that never used to open, and behind it was a garden full of light.",
+      day: "I'd been looking at old photos of my grandmother.",
+      freud: ["House under the sea: a wish to return to a safe past.", "Grandmother and tea: tenderness and comfort.", "The door that never opened: a postponed wish."],
+      jung: ["House: the self.", "Breathing underwater: making peace with the unconscious.", "Grandmother: the Great Mother archetype.", "Garden of light: a new wholeness."],
+      sum: "For Freud, a calm dream fed by a wish to return to a safe past. For Jung, the moment the key from the first dream finally opens the door.",
+      themes: [{ label: "Water", freud: "Repressed feelings overflowing.", jung: "The unconscious itself." }, { label: "The past", freud: "Traces of childhood.", jung: "The personal unconscious." }, { label: "Home", freud: "Safety and belonging.", jung: "The self." }],
+      symbols: [{ label: "Key", freud: "Access to a hidden wish.", jung: "A door to transformation." }, { label: "Garden of light", freud: "—", jung: "Wholeness, a new beginning." }, { label: "Tea", freud: "Comfort, tenderness.", jung: "—" }],
+      people: ["Grandmother"] }
+  ]
+};
+// ================= state =================
+const MOODS = [
+  { key: "calm", color: 0x8fe3d0 }, { key: "happy", color: 0xffd27a }, { key: "curious", color: 0xffb07a },
+  { key: "mixed", color: 0xd9a0ff }, { key: "sad", color: 0x7a9cff }, { key: "anxious", color: 0xff7a9a }
+];
+const NO_MOOD = 0x5d5470;
+const MOOD_COL = Object.fromEntries(MOODS.map(m => [m.key, m.color]));
+const hex = c => "#" + c.toString(16).padStart(6, "0");
+const moodName = k => STR[lang].moods[k] || "";
+
+const validDream = x => x && typeof x.id === "string" && typeof x.iso === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.iso) && typeof x.title === "string";
+const state = { userDreams: store.get("dn.dreams", []).filter(validDream), lens: "all", moodOn: false, peopleOn: false, timeIdx: null, selected: null };
+const saveDreams = () => store.set("dn.dreams", state.userDreams);
+
+// ================= model =================
+function hashSeed(s) { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) % 2147483646 + 1; }
+const norm = s => String(s).trim().toLocaleLowerCase(lang === "tr" ? "tr" : "en");
+function buildModel() {
+  const demo = state.userDreams.length === 0;
+  const dreams = [...(demo ? DEMO[lang] : state.userDreams)].sort((a, b) => a.iso.localeCompare(b.iso) || a.id.localeCompare(b.id));
+  // themes and symbols with the same name across dreams become one node; a node seen in 2+ dreams is a shared theme
+  const nodes = {};
+  dreams.forEach(d => [...(d.themes || []), ...(d.symbols || [])].forEach(x => {
+    const k = norm(x.label); if (!k) return;
+    const n = (nodes[k] = nodes[k] || { id: "l-" + hashSeed(k), label: x.label.trim(), freud: "—", jung: "—", dreams: [] });
+    if (n.freud === "—" && x.freud) n.freud = x.freud;
+    if (n.jung === "—" && x.jung) n.jung = x.jung;
+    if (!n.dreams.includes(d.id)) n.dreams.push(d.id);
+  }));
+  const symbols = Object.values(nodes).map(n => ({ ...n, type: n.dreams.length > 1 ? "theme" : "symbol" }));
+  const people = {};
+  dreams.forEach(d => (d.people || []).forEach(p => {
+    const k = norm(p); if (!k) return;
+    const e = (people[k] = people[k] || { id: "p-" + hashSeed(k), label: String(p).trim(), dreams: [] });
+    if (!e.dreams.includes(d.id)) e.dreams.push(d.id);
+  }));
+  return { demo, dreams, symbols, people: Object.values(people) };
+}
+
+// ================= panel =================
+const panel = document.getElementById("panel");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const li = arr => "<ul>" + (arr || []).map(x => `<li>${esc(x)}</li>`).join("") + "</ul>";
+let M = buildModel();
+let index = {};
+function reindex() {
+  index = {};
+  M.dreams.forEach(d => index[d.id] = { kind: "dream", d });
+  M.symbols.forEach(s => index[s.id] = { kind: s.type, s });
+  M.people.forEach(p => index[p.id] = { kind: "person", p });
+}
+reindex();
+const chip = id => { const n = index[id]; if (!n) return ""; const name = n.kind === "dream" ? dateLabel(n.d.iso) + " · " + n.d.title : (n.s || n.p).label; return `<button class="chip" type="button" data-go="${esc(id)}">${esc(name)}</button>`; };
+
+function renderPanel() {
+  let n = index[state.selected];
+  if (!n) { state.selected = M.dreams.at(-1).id; n = index[state.selected]; }
+  const id = state.selected, lens = state.lens, showF = lens !== "jung", showJ = lens !== "freud";
+  const kick = n.kind === "dream" ? dateLabel(n.d.iso) : n.kind === "theme" ? t("sharedTheme", n.s.dreams.length) : n.kind === "person" ? t("person", n.p.dreams.length) : t("symbol");
+  let h = `<div class="paneltop"><p class="kicker">${esc(kick)}</p><button type="button" class="btn primary" id="openAdd">${t("addDream")}</button></div>`;
+  if (M.demo) h += `<p class="banner">${t("demoBanner")}</p>`;
+  if (n.kind === "dream") {
+    const d = n.d, own = !M.demo;
+    const syms = M.symbols.filter(s => s.dreams.includes(d.id)).sort((a, b) => (a.type === "theme" ? 0 : 1) - (b.type === "theme" ? 0 : 1));
+    const ppl = M.people.filter(p => p.dreams.includes(d.id));
+    h += `<h2>${esc(d.title)}</h2><p>${esc(d.text)}</p>${d.day ? `<p class="meta"><b>${t("dayResidue")}:</b> ${esc(d.day)}</p>` : ""}`;
+    if (d.mood || d.sleep) h += `<p class="meta">${d.mood ? `<b>${t("mood")}:</b> ${esc(moodName(d.mood))}` : ""}${d.mood && d.sleep ? " · " : ""}${d.sleep ? `<b>${t("sleep")}:</b> ${esc(d.sleep)}` : ""}</p>`;
+    if (showF) h += `<h3 class="freud">${t("freudSays")}</h3>${li(d.freud)}`;
+    if (showJ) h += `<h3 class="jung">${t("jungSays")}</h3>${li(d.jung)}`;
+    if (lens === "all" && d.sum) h += `<p class="summary">${esc(d.sum)}</p>`;
+    h += `<h3>${t("symbolsHere")}</h3><div class="chips">${syms.map(s => chip(s.id)).join("")}</div>`;
+    if (ppl.length) h += `<h3>${t("peopleHere")}</h3><div class="chips">${ppl.map(p => chip(p.id)).join("")}</div>`;
+    if (own) h += `<div class="morning"><h3 style="margin:0">${t("morning")}</h3>
+      <div class="fields">
+        <select class="in" id="mMood" aria-label="${t("mood")}"><option value="">${t("pickMood")}</option>${MOODS.map(m => `<option value="${m.key}"${m.key === d.mood ? " selected" : ""}>${moodName(m.key)}</option>`).join("")}</select>
+        <input class="in" id="mSleep" placeholder="${t("sleepPh")}" value="${esc(d.sleep)}" aria-label="${t("sleep")}" style="flex:1;min-width:140px">
+        <button type="button" class="btn" id="mSave">${t("save")}</button>
+      </div><div class="status" id="mStatus"></div></div>`;
+    h += `<div class="tools">${own ? `<button type="button" class="btn danger" id="del">${t("del")}</button>` : ""}
+      ${own ? `<button type="button" class="btn" id="exp">${t("exportBtn")}</button>` : ""}
+      <label class="btn" style="cursor:pointer">${t("importBtn")}<input type="file" id="imp" accept="application/json,.json" hidden></label>
+      <div class="status" id="tStatus" style="flex-basis:100%"></div></div>`;
+  } else if (n.kind === "person") {
+    const p = n.p;
+    h += `<h2>${esc(p.label)}</h2><p>${p.dreams.length > 1 ? t("personMany", p.dreams.length) : t("personOne")}</p>
+      <h3>${t("seenIn")}</h3><div class="chips">${p.dreams.map(chip).join("")}</div>`;
+  } else {
+    const s = n.s;
+    h += `<h2>${esc(s.label)}</h2>`;
+    if (showF) h += `<h3 class="freud">Freud</h3><p>${esc(s.freud)}</p>`;
+    if (showJ) h += `<h3 class="jung">Jung</h3><p>${esc(s.jung)}</p>`;
+    h += `<h3>${t("seenIn")}</h3><div class="chips">${s.dreams.map(chip).join("")}</div>`;
+  }
+  panel.innerHTML = h;
+  panel.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => select(b.dataset.go)));
+  document.getElementById("openAdd").addEventListener("click", renderAddForm);
+  const save = document.getElementById("mSave");
+  if (save) save.addEventListener("click", () => {
+    const d = state.userDreams.find(x => x.id === id); if (!d) return;
+    d.mood = document.getElementById("mMood").value;
+    d.sleep = document.getElementById("mSleep").value.trim().slice(0, 60);
+    saveDreams(); refresh();
+    const st = document.getElementById("mStatus"); if (st) st.textContent = t("saved");
+  });
+  document.getElementById("del")?.addEventListener("click", () => {
+    if (!confirm(t("delAsk"))) return;
+    state.userDreams = state.userDreams.filter(x => x.id !== id); saveDreams();
+    state.selected = null; refresh(); renderPanel();
+  });
+  document.getElementById("exp")?.addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify({ app: "dreamnetwork", version: 1, dreams: state.userDreams }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `dreamnetwork-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  document.getElementById("imp")?.addEventListener("change", async ev => {
+    const st = document.getElementById("tStatus"), f = ev.target.files?.[0]; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const got = (Array.isArray(data?.dreams) ? data.dreams : []).filter(validDream);
+      if (!got.length) throw new Error("empty");
+      const have = new Set(state.userDreams.map(x => x.id));
+      state.userDreams.push(...got.filter(x => !have.has(x.id))); saveDreams();
+      state.selected = null; refresh(); renderPanel();
+      const s2 = document.getElementById("tStatus"); if (s2) s2.textContent = t("importDone", got.length);
+    } catch { st.className = "status err"; st.textContent = t("importBad"); }
+  });
+}
+
+// ---------- add a dream ----------
+let addCtl = null;
+function renderAddForm() {
+  const now = new Date(); const iso = new Date(now.getTime() - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  panel.innerHTML = `<div class="paneltop"><p class="kicker">${t("newDream")}</p><button type="button" class="btn" id="closeAdd">${t("cancel")}</button></div>
+    <h2>${t("tellDream")}</h2>
+    <p class="note">${t("addNote")}</p>
+    <form class="add" id="addForm">
+      <label class="f">${t("fDream")}<textarea class="in" id="aText" required minlength="10" maxlength="6000" placeholder="${t("fDreamPh")}"></textarea></label>
+      <div class="two">
+        <label class="f">${t("fDate")}<input class="in" type="date" id="aDate" value="${iso}" required></label>
+        <label class="f">${t("fMood")}<select class="in" id="aMood"><option value="">${t("fPick")}</option>${MOODS.map(m => `<option value="${m.key}">${moodName(m.key)}</option>`).join("")}</select></label>
+        <label class="f">${t("fSleep")}<input class="in" id="aSleep" placeholder="00.30 – 08.00"></label>
+      </div>
+      <label class="f">${t("fDay")}<input class="in" id="aDay" maxlength="400" placeholder="${t("fDayPh")}"></label>
+      <div class="row"><button type="submit" class="btn primary" id="aGo">${t("go")}</button><button type="button" class="btn" id="aStop" hidden>${t("stop")}</button></div>
+      <div class="status" id="aStatus"></div>
+    </form>`;
+  document.getElementById("closeAdd").addEventListener("click", () => { addCtl?.abort(); renderPanel(); });
+  document.getElementById("aStop").addEventListener("click", () => addCtl?.abort());
+  document.getElementById("addForm").addEventListener("submit", submitDream);
+}
+
+async function submitDream(ev) {
+  ev.preventDefault();
+  const text = document.getElementById("aText").value.trim(), iso = document.getElementById("aDate").value;
+  const mood = document.getElementById("aMood").value, sleep = document.getElementById("aSleep").value.trim(), day = document.getElementById("aDay").value.trim();
+  const st = document.getElementById("aStatus"), go = document.getElementById("aGo"), stop = document.getElementById("aStop");
+  if (!text || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+  // only the user's own dreams feed the links; the examples never do
+  const own = state.userDreams.length ? M : { symbols: [], people: [] };
+  addCtl = new AbortController();
+  go.disabled = true; stop.hidden = false; st.className = "status"; st.textContent = t("working");
+  try {
+    const res = await fetch("/api/interpret", {
+      method: "POST", headers: { "content-type": "application/json" }, signal: addCtl.signal,
+      body: JSON.stringify({ lang, text, date: dateLabel(iso), day, mood: moodName(mood), labels: own.symbols.map(s => s.label), people: own.people.map(p => p.label) })
+    });
+    const r = await res.json().catch(() => ({ error: "invalid_json" }));
+    if (!res.ok || r.error) throw { code: res.status === 429 ? "rate_limited" : r.error };
+    const d = { id: "d" + Date.now().toString(36), iso, title: r.title || text.slice(0, 40), text, day, mood, sleep: sleep.slice(0, 60),
+      freud: r.freud || [], jung: r.jung || [], sum: r.sum || "", themes: r.themes || [], symbols: r.symbols || [], people: r.people || [],
+      lang, createdAt: new Date().toISOString() };
+    state.userDreams.push(d);
+    saveDreams();
+    state.selected = d.id; state.timeIdx = null;
+    refresh(); renderPanel();
+  } catch (e) {
+    stop.hidden = true; go.disabled = false;
+    if (e?.name === "AbortError") { st.className = "status"; st.textContent = ""; return; }
+    const code = e instanceof TypeError ? (navigator.onLine ? "other" : "offline") : e?.code;
+    st.className = "status err"; st.textContent = STR[lang].err[code] || STR[lang].err.other;
+  }
+}
+
+// ================= sound =================
+const audio = (() => {
+  let ctx = null, master = null, on = false;
+  function ensure() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420; lp.Q.value = 6; lp.connect(master);
+    [55, 82.4, 110.6].forEach((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? "triangle" : "sine"; o.frequency.value = f; o.detune.value = (i - 1) * 7; const g = ctx.createGain(); g.gain.value = i === 2 ? .12 : .28; o.connect(g); g.connect(lp); o.start(); });
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = .06; lg.gain.value = 220; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * .5;
+    const ns = ctx.createBufferSource(); ns.buffer = buf; ns.loop = true;
+    const nf = ctx.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .7;
+    const ng = ctx.createGain(); ng.gain.value = .05; ns.connect(nf); nf.connect(ng); ng.connect(master); ns.start();
+  }
+  return {
+    toggle() { ensure(); on = !on; if (on) ctx.resume(); master.gain.setTargetAtTime(on ? .5 : 0, ctx.currentTime, .6); return on; },
+    blip(kind) {
+      if (!on || !ctx) return;
+      const f = { dream: 392, theme: 587, symbol: 784, person: 523 }[kind] || 660, t = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain(), d = ctx.createDelay(), fb = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(f * 1.5, t); o.frequency.exponentialRampToValueAtTime(f, t + .08);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.22, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .9);
+      d.delayTime.value = .18; fb.gain.value = .35;
+      o.connect(g); g.connect(ctx.destination); g.connect(d); d.connect(fb); fb.connect(d); d.connect(ctx.destination);
+      o.start(t); o.stop(t + 1);
+    }
+  };
+})();
+
+// ================= 3D =================
+const stage = document.getElementById("stage");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let seed = 23; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+let G = null;
+function select(id) { state.selected = id; renderPanel(); G?.applySelection(); audio.blip(index[id]?.kind); }
+
+function start3D() {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x000000, 0);
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000000, 0.0019);
+  const camera = new THREE.PerspectiveCamera(48, 1, 1, 4000);
+  camera.position.set(-380, 95, 400);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  Object.assign(controls, { enableDamping: true, dampingFactor: .07, enablePan: false, minDistance: 170, maxDistance: 1000, autoRotateSpeed: .55, rotateSpeed: .7 });
+
+  const gc = document.createElement("canvas"); gc.width = gc.height = 128;
+  const g2 = gc.getContext("2d"), grd = g2.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, "rgba(255,255,255,1)"); grd.addColorStop(.18, "rgba(255,255,255,.75)"); grd.addColorStop(.45, "rgba(255,255,255,.18)"); grd.addColorStop(1, "rgba(255,255,255,0)");
+  g2.fillStyle = grd; g2.fillRect(0, 0, 128, 128);
+  const glowTex = new THREE.CanvasTexture(gc);
+  const glow = (color, size, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false })); s.scale.set(size, size, 1); return s; };
+
+  // ---- brain tissue: two hemispheres of faint neurons ----
+  seed = 23;
+  const N = 900, pts = [];
+  while (pts.length < N) {
+    const s = rnd() < .5 ? -1 : 1;
+    const u = rnd() * 2 - 1, th = rnd() * 6.283, r = Math.pow(rnd(), .35), q = Math.sqrt(1 - u * u);
+    let x = q * Math.cos(th), y = u, z = q * Math.sin(th);
+    x = s * 92 + x * 118 * r; y = y * 138 * r; z = z * 200 * r;
+    if (Math.abs(x) < 10) continue;
+    if (y < -95 && Math.abs(z) < 60) continue;
+    y += Math.sin(z * .03 + x * .02) * 8;
+    pts.push(V(x, y, z));
+  }
+  const pg = new THREE.BufferGeometry().setFromPoints(pts);
+  const pc = new Float32Array(N * 3), cA = new THREE.Color(0x8e5bc8), cB = new THREE.Color(0xe6a0f0), tmp = new THREE.Color();
+  pts.forEach((p, i) => { tmp.copy(cA).lerp(cB, rnd()); pc.set([tmp.r, tmp.g, tmp.b], i * 3); });
+  pg.setAttribute("color", new THREE.BufferAttribute(pc, 3));
+  scene.add(new THREE.Points(pg, new THREE.PointsMaterial({ size: 7, map: glowTex, vertexColors: true, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })));
+  const seg = [], bgLinks = [];
+  for (let i = 0; i < N; i++) {
+    const near = [];
+    for (let j = 0; j < N; j++) if (i !== j) { const d = pts[i].distanceToSquared(pts[j]); if (d < 1600) near.push([d, j]); }
+    near.sort((a, b) => a[0] - b[0]).slice(0, 3).forEach(([, j]) => { if (j > i) { seg.push(pts[i], pts[j]); bgLinks.push([i, j]); } });
+  }
+  scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seg), new THREE.LineBasicMaterial({ color: 0x6d3fa8, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false })));
+  const bgPulses = [];
+  for (let i = 0; i < 70; i++) { const s = glow(0xd8a8ff, 6, .45); scene.add(s); bgPulses.push({ s, l: bgLinks[Math.floor(rnd() * bgLinks.length)], t: rnd(), v: .01 + rnd() * .015 }); }
+
+  // ---- scan plane sweeping the brain ----
+  const scan = new THREE.Mesh(new THREE.PlaneGeometry(520, 620), new THREE.MeshBasicMaterial({ color: 0xb070e0, transparent: true, opacity: .05, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scan.rotation.x = -Math.PI / 2; scene.add(scan);
+  const scanEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(520, 620)), new THREE.LineBasicMaterial({ color: 0xc890f0, transparent: true, opacity: .35 }));
+  scanEdge.rotation.x = -Math.PI / 2; scene.add(scanEdge);
+
+  // ---- the dream graph, rebuilt whenever dreams or notes change ----
+  const graph = new THREE.Group(); scene.add(graph);
+  const labels = document.getElementById("labels");
+  const hudL = document.getElementById("hudL"), hudR = document.getElementById("hudR"), hudB = document.getElementById("hudB");
+  const COL = { dream: 0xc9a0ff, theme: 0xf2c0ff, symbol: 0x9a78d0, person: 0xffc6e8 };
+  const LENS_COL = { freud: 0xff9ec7, jung: 0xb9a0ff };
+  const RAD = { dream: 9, theme: 5, symbol: 3.6, person: 4.5 };
+  // deterministic offset for a shared theme, so it floats near its dreams without overlapping them
+  const themeOff = id => { const h = hashSeed(id), a = (h % 628) / 100, e = ((h >> 10) % 200) / 100 - 1; return V(Math.cos(a) * 60, e * 55 + 20, Math.sin(a) * 60); };
+  let nodes = [], edges = [], pulses = [], hit = [], byId = {};
+
+  function disposeGraph() {
+    graph.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); });
+    graph.clear(); labels.textContent = ""; nodes = []; edges = []; pulses = []; hit = []; byId = {};
+  }
+
+  function build() {
+    disposeGraph();
+    const P = {};
+    let k = 0;
+    M.dreams.forEach(d => {
+      if (M.dreams.length === 1) { P[d.id] = V(0, 0, 0); return; }
+      const a = .9 + k * 2.399, y = ((k % 3) - 1) * 72, rad = 1 + Math.min(k, 40) * .02; k++;
+      P[d.id] = V(Math.cos(a) * 150 * rad, y, Math.sin(a) * 135 * rad);
+    });
+    const centroid = ids => ids.reduce((acc, i) => acc.add(P[i].clone()), V(0, 0, 0)).multiplyScalar(1 / ids.length);
+    const local = {};
+    M.symbols.forEach(s => {
+      if (s.type === "theme") { P[s.id] = centroid(s.dreams).add(themeOff(s.id)); return; }
+      const d = s.dreams[0], n = (local[d] = (local[d] || 0) + 1), base = P[d];
+      const out = base.x < -20 ? -1 : base.x > 20 ? 1 : 0;
+      const ang = n * 2.4 + hashSeed(d) % 7, el = n % 2 ? .5 : -.4;
+      P[s.id] = base.clone().add(V(Math.cos(ang) * 62 + out * 40, Math.sin(el) * 62 + (base.y < -30 ? -20 : 0), Math.sin(ang) * 62 + (base.z < -50 ? -40 : 0)));
+    });
+    M.people.forEach((p, i) => { const a = i / Math.max(1, M.people.length) * 6.283; P[p.id] = V(Math.cos(a) * 245, 125 + Math.sin(i * 1.7) * 35, Math.sin(a) * 245); });
+
+    const all = [...M.dreams.map(d => ({ id: d.id, kind: "dream", label: dateLabel(d.iso), ref: d })),
+                 ...M.symbols.map(s => ({ id: s.id, kind: s.type, label: s.label, ref: s })),
+                 ...M.people.map(p => ({ id: p.id, kind: "person", label: p.label, ref: p }))];
+    all.forEach(n => {
+      seed = hashSeed(n.id);
+      const g = new THREE.Group(); g.position.copy(P[n.id]); graph.add(g);
+      n.pos = P[n.id]; n.group = g;
+      const r = n.kind === "person" ? RAD.person * (1 + .35 * (n.ref.dreams.length - 1)) : RAD[n.kind];
+      n.r = r;
+      n.coreMat = new THREE.MeshBasicMaterial({ color: COL[n.kind], transparent: true });
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), n.coreMat));
+      n.glow = glow(COL[n.kind], r * 7, n.kind === "symbol" ? .6 : .9); g.add(n.glow);
+      n.halo = glow(0xffffff, r * 12, 0); g.add(n.halo);
+      const h = new THREE.Mesh(new THREE.SphereGeometry(r * 2.6, 8, 6), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      h.userData.id = n.id; g.add(h); hit.push(h);
+      const nd = { dream: 14, theme: 9, symbol: 6, person: 5 }[n.kind];
+      n.dendMat = new THREE.LineBasicMaterial({ color: COL[n.kind], transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false });
+      for (let i = 0; i < nd; i++) {
+        const dir = V(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1).normalize(), L = r * (2.2 + rnd() * 2.6);
+        const a = dir.clone().multiplyScalar(r * .9);
+        const m = dir.clone().multiplyScalar(r + L * .5).add(V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(L * .5));
+        const b = dir.clone().multiplyScalar(r + L).add(V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(L * .6));
+        const c = new THREE.CatmullRomCurve3([a, m, b]);
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(c.getPoints(10)), n.dendMat));
+        const f0 = c.getPoint(.6), f1 = f0.clone().add(V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(L * .7));
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([f0, f1]), n.dendMat));
+      }
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "lbl " + n.kind; b.textContent = n.label;
+      b.setAttribute("aria-label", n.kind === "dream" ? n.ref.title : n.label);
+      b.addEventListener("click", () => select(n.id));
+      labels.appendChild(b); n.lbl = b;
+      nodes.push(n); byId[n.id] = n;
+    });
+    const link = (aId, dreamId, kind) => {
+      const a = P[dreamId], b = P[aId], d = a.distanceTo(b);
+      seed = hashSeed(aId + "|" + dreamId);
+      const j = () => V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(d * .28);
+      const curve = new THREE.CatmullRomCurve3([a, a.clone().lerp(b, .33).add(j()), a.clone().lerp(b, .66).add(j()), b]);
+      const base = kind === "person" ? 0xd98ac0 : 0x8d5ec8;
+      const e = { a: aId, b: dreamId, kind, curve, base, mat: new THREE.LineBasicMaterial({ color: base, transparent: true, opacity: .38, blending: THREE.AdditiveBlending, depthWrite: false }) };
+      e.line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)), e.mat); graph.add(e.line);
+      for (let i = 0; i < 2; i++) { const s = glow(kind === "person" ? 0xffd6ee : 0xf4d0ff, 9, .55); graph.add(s); pulses.push({ s, curve, e, t: rnd(), v: .0025 + rnd() * .003, dir: i ? -1 : 1 }); }
+      edges.push(e);
+    };
+    M.symbols.forEach(s => s.dreams.forEach(d => link(s.id, d, s.type)));
+    M.people.forEach(p => p.dreams.forEach(d => link(p.id, d, "person")));
+    applyAll();
+  }
+
+  const dreamVisible = id => state.timeIdx == null || M.dreams.findIndex(d => d.id === id) <= state.timeIdx;
+  const lensOk = n => { if (state.lens === "all" || n.kind === "dream" || n.kind === "person") return true; const v = n.ref[state.lens]; return !!v && v !== "—"; };
+  function applyAll() {
+    nodes.forEach(n => {
+      const ds = n.kind === "dream" ? [n.id] : n.ref.dreams;
+      let vis = ds.some(dreamVisible);
+      if (n.kind === "person" && !state.peopleOn) vis = false;
+      n.visible = vis; n.group.visible = vis; n.lbl.hidden = !vis;
+      let c = COL[n.kind];
+      if (n.kind === "dream" && state.moodOn) c = MOOD_COL[n.ref.mood] ?? NO_MOOD;
+      if ((n.kind === "theme" || n.kind === "symbol") && state.lens !== "all" && lensOk(n)) c = LENS_COL[state.lens];
+      n.coreMat.color.setHex(c); n.glow.material.color.setHex(c); n.dendMat.color.setHex(c);
+    });
+    edges.forEach(e => { const vis = !!byId[e.a]?.visible && dreamVisible(e.b); e.visible = vis; e.line.visible = vis; });
+    pulses.forEach(p => p.s.visible = p.e.visible);
+    applySelection();
+    const shown = M.dreams.filter(d => dreamVisible(d.id)).length;
+    hudL.innerHTML = `${t("hudArchive")}<br>${t("hudStats", shown, nodes.filter(n => n.visible).length)}`;
+  }
+  function applySelection() {
+    const id = state.selected, linked = new Set([id]);
+    edges.forEach(e => { if (!e.visible) return; if (e.a === id) linked.add(e.b); if (e.b === id) linked.add(e.a); });
+    nodes.forEach(n => {
+      const on = linked.has(n.id) && lensOk(n);
+      n.coreMat.opacity = on ? 1 : .25; n.glow.material.opacity = on ? (n.kind === "symbol" ? .7 : 1) : .14;
+      n.dendMat.opacity = on ? .6 : .1; n.halo.material.opacity = n.id === id ? .35 : 0;
+      n.lbl.classList.toggle("dim", !on);
+    });
+    edges.forEach(e => { const on = (e.a === id || e.b === id) && lensOk(byId[e.a]); e.on = on; e.mat.opacity = on ? .95 : .1; e.mat.color.setHex(on ? 0xe8c4ff : e.base); });
+  }
+
+  // ---- input ----
+  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
+  renderer.domElement.addEventListener("pointerdown", ev => { down = [ev.clientX, ev.clientY]; });
+  renderer.domElement.addEventListener("pointerup", ev => {
+    if (!down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 5) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    mouse.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+    ray.setFromCamera(mouse, camera);
+    const h = ray.intersectObjects(hit.filter(x => byId[x.userData.id]?.visible))[0];
+    if (h) select(h.object.userData.id);
+  });
+  const spinBtn = document.getElementById("spin");
+  const setSpin = on => { controls.autoRotate = on; spinBtn.textContent = t(on ? "spinStop" : "spin"); spinBtn.dataset.on = on ? "1" : ""; };
+  setSpin(!reduce);
+  controls.addEventListener("start", () => setSpin(false));
+  spinBtn.addEventListener("click", () => setSpin(!controls.autoRotate));
+
+  const resize = () => { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(stage); resize();
+
+  const v = new THREE.Vector3(); let frameN = 0;
+  (function frame() {
+    requestAnimationFrame(frame);
+    controls.update();
+    const tt = performance.now() / 1000;
+    if (!reduce) {
+      pulses.forEach(p => {
+        if (!p.s.visible) return;
+        p.t = (p.t + p.v * (p.e.on ? 2.2 : 1)) % 1;
+        p.s.position.copy(p.curve.getPoint(p.dir > 0 ? p.t : 1 - p.t));
+        p.s.material.opacity = !p.e.on ? .08 : .95;
+        const sc = p.e.on ? 13 : 8; p.s.scale.set(sc, sc, 1);
+      });
+      bgPulses.forEach(p => { p.t += p.v; if (p.t >= 1) { p.t = 0; p.l = bgLinks[Math.floor(Math.random() * bgLinks.length)]; } p.s.position.copy(pts[p.l[0]]).lerp(pts[p.l[1]], p.t); });
+      nodes.forEach((n, i) => { const k = 1 + Math.sin(tt * 1.6 + i) * .08; n.glow.scale.set(n.r * 7 * k, n.r * 7 * k, 1); });
+      const sy = Math.sin(tt * .45) * 150; scan.position.y = sy; scanEdge.position.y = sy;
+    }
+    if (frameN++ % 12 === 0) {
+      const az = (THREE.MathUtils.radToDeg(controls.getAzimuthalAngle()) + 360) % 360;
+      hudR.innerHTML = `${t("hudSync")} ${az.toFixed(1).padStart(5, "0")}°<br>${t("hudSignal")} ${(62 + Math.sin(tt * .7) * 21 + Math.random() * 4).toFixed(1)} Hz`;
+      hudB.textContent = t("hudLayer") + " " + String(Math.round(scan.position.y + 150)).padStart(3, "0");
+    }
+    renderer.render(scene, camera);
+    const w = stage.clientWidth, h = stage.clientHeight;
+    nodes.forEach(n => {
+      if (!n.visible) return;
+      v.copy(n.pos).project(camera);
+      if (v.z > 1) { n.lbl.style.visibility = "hidden"; return; }
+      n.lbl.style.visibility = "visible";
+      const depth = camera.position.distanceTo(n.pos);
+      const off = n.r * 2.2 / Math.max(.4, depth / 500);
+      n.lbl.style.opacity = Math.max(.35, Math.min(1, 1.35 - depth / 900)).toFixed(2);
+      n.lbl.style.transform = `translate(${(v.x + 1) / 2 * w}px, ${(1 - v.y) / 2 * h + off}px) translate(-50%, 0)`;
+    });
+  })();
+
+  G = { applySelection, applyAll, build };
+  build();
+}
+
+// ================= controls =================
+document.querySelectorAll("[data-lens]").forEach(b => b.addEventListener("click", () => {
+  state.lens = b.dataset.lens;
+  document.querySelectorAll("[data-lens]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  G?.applyAll(); if (!document.getElementById("addForm")) renderPanel();
+}));
+const tMood = document.getElementById("tMood"), tPeople = document.getElementById("tPeople"), tSound = document.getElementById("tSound"), moodKey = document.getElementById("moodKey");
+const renderMoodKey = () => { moodKey.innerHTML = MOODS.map(m => `<span><i style="background:${hex(m.color)}"></i>${moodName(m.key)}</span>`).join("") + `<span><i style="background:${hex(NO_MOOD)}"></i>${t("noNote")}</span>`; };
+tMood.addEventListener("click", () => { state.moodOn = !state.moodOn; tMood.setAttribute("aria-pressed", String(state.moodOn)); moodKey.hidden = !state.moodOn; G?.applyAll(); });
+tPeople.addEventListener("click", () => {
+  state.peopleOn = !state.peopleOn; tPeople.setAttribute("aria-pressed", String(state.peopleOn));
+  if (!state.peopleOn && index[state.selected]?.kind === "person") { state.selected = M.dreams.at(-1).id; renderPanel(); }
+  G?.applyAll();
+});
+tSound.addEventListener("click", () => { const on = audio.toggle(); tSound.setAttribute("aria-pressed", String(on)); });
+
+const slider = document.getElementById("slider"), sliderOut = document.getElementById("sliderOut"), playBtn = document.getElementById("play");
+function syncSlider() {
+  slider.max = String(M.dreams.length - 1);
+  if (state.timeIdx == null) slider.value = slider.max;
+  sliderOut.textContent = state.timeIdx == null ? t("all") : dateLabel(M.dreams[Number(slider.value)].iso);
+}
+function showUpTo(i) {
+  state.timeIdx = i >= M.dreams.length - 1 ? null : i;
+  state.selected = M.dreams[i].id;
+  syncSlider(); G?.applyAll(); renderPanel();
+}
+slider.addEventListener("input", () => showUpTo(Number(slider.value)));
+let playTimer = null;
+playBtn.addEventListener("click", () => {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; playBtn.textContent = t("play"); return; }
+  let i = 0; playBtn.textContent = t("stop");
+  const step = () => {
+    slider.value = String(i); showUpTo(i); audio.blip("dream");
+    if (++i >= M.dreams.length) { clearInterval(playTimer); playTimer = null; playBtn.textContent = t("play"); }
+  };
+  step(); playTimer = setInterval(step, 1800);
+});
+
+function refresh() {
+  M = buildModel(); reindex();
+  if (!index[state.selected]) state.selected = M.dreams.at(-1).id;
+  if (state.timeIdx != null && state.timeIdx >= M.dreams.length - 1) state.timeIdx = null;
+  syncSlider(); G?.build();
+}
+
+// ---------- language ----------
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  document.getElementById("stage").setAttribute("aria-label", t("stageLabel"));
+  slider.setAttribute("aria-label", t("time"));
+  const spin = document.getElementById("spin"); spin.textContent = t(spin.dataset.on ? "spinStop" : "spin");
+  if (playTimer) playBtn.textContent = t("stop");
+  renderMoodKey();
+}
+document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.lang === lang) return;
+  lang = b.dataset.lang; store.set("dn.lang", lang);
+  applyLang(); refresh(); renderPanel();
+}));
+
+// ================= boot =================
+applyLang();
+state.selected = M.dreams.at(-1).id;
+try {
+  if (!window.THREE || !THREE.OrbitControls) throw new Error("three");
+  start3D();
+} catch (err) {
+  const f = document.createElement("div"); f.className = "fallback";
+  f.textContent = t("fallback3d");
+  stage.appendChild(f);
+}
+syncSlider(); renderPanel();
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>

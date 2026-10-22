@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 14 72 72"><defs><filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<radialGradient id="bg" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#2a0f33"/><stop offset="1" stop-color="#07040a"/></radialGradient></defs><g filter="url(#g)"><circle cx="40" cy="50" r="22" fill="none" stroke="#ff9ec7" stroke-width="2.4"/><circle cx="60" cy="50" r="22" fill="none" stroke="#b9a0ff" stroke-width="2.4"/>
+<line x1="50.0" y1="28.0" x2="50.0" y2="72.0" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1"/><circle cx="50" cy="50" r="5" fill="#fff"/></g></svg>

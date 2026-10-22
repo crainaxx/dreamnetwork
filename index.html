@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dream Network</title>
+<meta property="og:title" content="Dream Network">
+<meta property="og:description" content="Your dreams are talking to each other. Read them through Freud and Jung, and watch them connect.">
+<meta property="og:image" content="preview.jpg">
+<meta name="description" content="A dream journal concept that reads dreams through Freud and Jung and links them in a 3D brain network. Demo with made-up dreams.">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+/* Layout: a rotatable 3D brain of dreams on the left with a control deck under it, the selected entry or the new-dream form on the right (stacked on phones). Single deliberate black-to-aubergine night theme. */
+:root {
+  --bg: #000000;
+  --bg-mid: #0a030b;
+  --bg-deep: #22081f;
+  --panel: rgba(8,5,14,.78);
+  --line: rgba(255,255,255,.14);
+  --line-strong: rgba(255,255,255,.32);
+  --fg: #ffffff;
+  --muted: rgba(255,255,255,.72);
+  --faint: rgba(255,255,255,.5);
+  --dream: #c9a6ff;
+  --symbol: #9a78d0;
+  --theme: #f2c0ff;
+  --person: #ffc6e8;
+  --freud: #ff9ec7;
+  --jung: #b9a0ff;
+  --body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+html { background: var(--bg); }
+body { background: linear-gradient(175deg, var(--bg) 0%, var(--bg) 25%, var(--bg-mid) 60%, var(--bg-deep) 100%); background-color: var(--bg); color: var(--fg); min-height: 100vh; font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1260px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 40px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 18px; }
+h1 { font-weight: 700; font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--fg); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px currentColor; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.sky { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, rgba(70,18,62,.16), rgba(0,0,0,.92) 70%); min-width: 0; }
+.stage { position: relative; height: 600px; touch-action: none; }
+@media (max-width: 900px) { .stage { height: 460px; } }
+.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl { position: absolute; left: 0; top: 0; pointer-events: auto; font: inherit; font-size: 12px; color: var(--fg); letter-spacing: .02em; background: none; border: 0; padding: 2px 4px; cursor: pointer; white-space: nowrap; text-shadow: 0 0 6px #000, 0 0 2px #000; transition: opacity .25s; will-change: transform; }
+.lbl.dream { font-size: 14px; font-weight: 700; }
+.lbl.theme { font-weight: 600; font-size: 12.5px; }
+.lbl.person { font-style: italic; color: var(--person); }
+.lbl.dim { opacity: .16 !important; }
+.lbl:focus-visible { outline: 1px solid var(--dream); border-radius: 4px; }
+.fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+.fx { position: absolute; inset: 0; pointer-events: none; }
+.scan { background: repeating-linear-gradient(to bottom, rgba(255,255,255,.035) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
+.vig { background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,.85) 100%); }
+.hud { position: absolute; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.55); pointer-events: none; font-variant-numeric: tabular-nums; line-height: 1.6; }
+.hud.tl { top: 12px; left: 14px; } .hud.tr { top: 12px; right: 14px; text-align: right; } .hud.bl { bottom: 10px; left: 14px; }
+
+/* control deck */
+.deck { border-top: 1px solid var(--line); padding: 12px 14px 14px; display: grid; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.lab { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); min-width: 64px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 4px 13px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: rgba(255,255,255,.12); color: var(--fg); }
+.seg button + button { border-left: 1px solid var(--line); }
+.tog { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.tog::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.tog[aria-pressed="true"] { color: var(--fg); border-color: var(--line-strong); }
+.tog[aria-pressed="true"]::before { background: var(--theme); box-shadow: 0 0 8px var(--theme); }
+.btn { font: inherit; font-size: 13px; color: var(--fg); background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 14px; cursor: pointer; }
+.btn.primary { background: var(--fg); color: #000; border-color: var(--fg); font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: default; }
+.seg button:focus-visible, .tog:focus-visible, .btn:focus-visible, .chip:focus-visible { outline: 2px solid var(--dream); outline-offset: 2px; }
+.time { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 0; }
+.time input[type=range] { flex: 1; min-width: 0; accent-color: #d9b8ff; }
+.time output { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fg); min-width: 92px; }
+.moods { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; color: var(--muted); }
+.moods span { display: inline-flex; align-items: center; gap: 5px; }
+.en { font-weight: 400; color: var(--muted); }
+.moods i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+/* panel */
+article { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 26px; min-width: 0; backdrop-filter: blur(6px); }
+.paneltop { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.kicker { text-transform: uppercase; letter-spacing: .12em; font-size: 11.5px; color: var(--muted); margin: 0; }
+article h2 { font-weight: 700; font-size: 24px; line-height: 1.25; margin: 0 0 12px; text-wrap: balance; }
+article h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .16em; color: var(--fg); margin: 20px 0 6px; font-weight: 600; }
+article h3.freud { color: var(--freud); } article h3.jung { color: var(--jung); }
+article p { margin: 0 0 10px; max-width: 65ch; }
+article ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.meta { font-size: 13.5px; color: var(--muted); }
+.meta b { color: var(--fg); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip { font: inherit; font-size: 13px; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; cursor: pointer; }
+.chip:hover { border-color: var(--dream); }
+.summary { border-left: 2px solid var(--fg); padding-left: 12px; margin-top: 18px; }
+.morning { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.morning .fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.in { font: inherit; font-size: 14px; color: var(--fg); background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+textarea.in { min-height: 150px; resize: vertical; line-height: 1.5; }
+.in:focus { outline: none; border-color: var(--dream); }
+select.in option { background: #120814; }
+form.add { display: grid; gap: 12px; }
+form.add .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.note { font-size: 13px; color: var(--muted); }
+.status { font-size: 13.5px; color: var(--fg); min-height: 1.2em; }
+.status.err { color: var(--freud); }
+footer { margin-top: 18px; font-size: 13px; color: var(--muted); }
+footer a { color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.story { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--line); }
+.story .kicker { text-transform: uppercase; letter-spacing: .12em; font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
+.story h2 { font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; margin: 0 0 24px; letter-spacing: -.01em; text-wrap: balance; max-width: 30ch; }
+.story-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+@media (max-width: 900px) { .story-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
+.story h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .16em; font-weight: 600; margin: 0 0 8px; color: var(--theme); }
+.story p, .story li { color: var(--muted); max-width: 60ch; }
+.story p { margin: 0 0 10px; }
+.story ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+.story .meta b { color: var(--fg); font-weight: 500; }
+.story .note { margin-top: 24px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.backlink { display: inline-block; margin: 0 14px 10px 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--fg); text-decoration: none; }
+.backlink:hover { color: var(--theme); }
+.demo-badge { display: inline-block; margin: 0 0 10px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+@media (max-width: 600px) { .hud.tr { display: none; } }
+
+.wl{margin:28px 0 8px;padding:22px 22px 20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);display:grid;gap:12px;max-width:640px}
+.wl h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.wl p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.wl form{display:flex;gap:10px;flex-wrap:wrap}
+.wl input[type=email]{flex:1 1 220px;font:inherit;font-size:15px;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid var(--line-strong);border-radius:999px;padding:10px 16px}
+.wl button{font:inherit;font-size:15px;font-weight:600;color:#12061a;background:var(--fg);border:0;border-radius:999px;padding:10px 20px;cursor:pointer}
+.wl .hp{position:absolute;left:-9999px}
+.wl .ok{color:var(--fg)}
+</style>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="demo-badge">Demo · Example dreams are made up</p>
+      <h1 style="display:flex;align-items:center;gap:.35em"><img src="logo.svg" alt="" width="44" height="44" style="width:1.1em;height:1.1em">Dream Network</h1>
+      <p class="sub">Where dreams and symbols connect like neurons inside a scanned brain. Tap a neuron and read its entry in the panel.</p>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><i class="dot" style="background:var(--dream);color:var(--dream)"></i>Dream</span>
+      <span><i class="dot" style="background:var(--theme);color:var(--theme)"></i>Shared theme</span>
+      <span><i class="dot" style="background:var(--symbol);color:var(--symbol)"></i>Symbol</span>
+      <span><i class="dot" style="background:var(--person);color:var(--person)"></i>Person</span>
+    </div>
+  </header>
+  <section class="wl" id="waitlist" aria-labelledby="wlh">
+    <h2 id="wlh">Your dreams are talking to each other.</h2>
+    <p>Dream Network is in early access. Leave your email and you'll be among the first to start your own network.</p>
+    <form name="waitlist" method="POST" action="thanks.html" data-netlify="true" netlify-honeypot="company">
+      <input type="hidden" name="form-name" value="waitlist">
+      <p class="hp"><label>Leave empty <input name="company"></label></p>
+      <input type="email" name="email" required placeholder="you@email.com" aria-label="Email">
+      <button type="submit">Join the waitlist</button>
+    </form>
+    <p>No spam. One email when it's ready.</p>
+  </section>
+
+
+  <div class="grid">
+    <div class="sky">
+      <div class="stage" id="stage" role="img" aria-label="A 3D neural network of dreams and symbols">
+        <div class="labels" id="labels"></div>
+        <div class="fx scan"></div><div class="fx vig"></div>
+        <div class="hud tl" id="hudL">Neural record archive<br>Subject: Demo</div>
+        <div class="hud tr" id="hudR">Sync 00.0°<br>Signal --</div>
+        <div class="hud bl" id="hudB">Scan active</div>
+      </div>
+      <div class="deck">
+        <div class="row">
+          <span class="lab">Lens</span>
+          <div class="seg" role="group" aria-label="Interpretation lens">
+            <button type="button" data-lens="all" aria-pressed="true">Both</button>
+            <button type="button" data-lens="freud" aria-pressed="false">Freud</button>
+            <button type="button" data-lens="jung" aria-pressed="false">Jung</button>
+          </div>
+          <button type="button" class="tog" id="tMood" aria-pressed="false">Mood colours</button>
+          <button type="button" class="tog" id="tPeople" aria-pressed="false">People</button>
+          <button type="button" class="tog" id="tSound" aria-pressed="false">Sound</button>
+        </div>
+        <div class="row">
+          <span class="lab">Time</span>
+          <div class="time">
+            <button type="button" class="btn" id="play">Play</button>
+            <input type="range" id="slider" min="0" max="0" value="0" step="1" aria-label="Timeline">
+            <output id="sliderOut" for="slider">All</output>
+          </div>
+          <button type="button" class="btn" id="spin">Stop rotation</button>
+        </div>
+        <div class="moods" id="moodKey" hidden></div>
+      </div>
+    </div>
+    <article id="panel" aria-live="polite"></article>
+  </div>
+
+  <section class="story" aria-labelledby="storyH">
+    <p class="kicker">Project story</p>
+    <h2 id="storyH">Dreams aren't remembered as a list, but as a network</h2>
+    <div class="story-grid">
+      <div>
+        <h3>The idea</h3>
+        <p>I started writing my dreams in a notebook every morning and reading them through Freud and Jung. As the entries grew, I realised the interesting part wasn't the individual dreams but the connections between them: a symbol returning months later, different figures playing the same role in different dreams. A list or a calendar was hiding those links.</p>
+      </div>
+      <div>
+        <h3>What's different</h3>
+        <ul>
+          <li>Dreams, symbols and shared themes connect like neurons inside a 3D brain.</li>
+          <li>The same dream can be seen through two lenses: switching to Freud or Jung recolours the network.</li>
+          <li>A timeline replays how the network grew; mood colours bring morning notes onto the map.</li>
+          <li>When a new dream is written, AI interprets it and adds it to the network with its own connections.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Design</h3>
+        <p>The visual language comes from a brain scan: a night that fades from black into deep aubergine, warm purple neurons, a slowly sweeping scan layer and ambient sound. No alarms, no red warnings, no cold greys; the screen should feel close to sleep, not clinical.</p>
+        <p class="meta"><b>Tools:</b> three.js, Web Audio API, Claude (interpretation)</p>
+      </div>
+    </div>
+    <p class="note">The dreams and interpretations on this page are made up for demo purposes. The real journal is personal and not shared.</p>
+  </section>
+  <footer>Dream Network · 2026</footer>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ================= demo data (made-up example dreams) =================
+const BASE_DREAMS = [
+  { id: "kutuphane", iso: "2026-03-03", date: "March 3, 2026", mood: "Calm", sleep: "23:40 – 07:30",
+    title: "The underwater library",
+    text: "I walk into a library, but it is completely filled with water. I don't drown; I can breathe. The pages of the books open and close like fish gills. An old librarian hands me a rusty key and points to the door on the lowest floor.",
+    day: "Started a long-postponed reading list that day.",
+    freud: ["A room full of water: the womb, safety and the wish to withdraw.", "Being able to breathe: feeling able to cope with a repressed emotion.", "Rusty key: a wish kept locked away for a long time.", "The lowest floor: thoughts given no room in consciousness."],
+    jung: ["Water: the unconscious itself.", "The library: the collective unconscious, humanity's shared memory.", "The old librarian: the wise old archetype.", "Key and door: the next threshold on the path of individuation."],
+    sum: "For Freud, a dream about safely approaching a locked-away wish. For Jung, a guided descent, an invitation into the unconscious.",
+    people: ["Old librarian"] },
+  { id: "merdiven", iso: "2026-04-19", date: "April 19, 2026", mood: "Anxious", sleep: "01:15 – 07:00",
+    title: "The endless stairs and the missed train",
+    text: "I'm trying to catch a train at a station. The stairs down to the platform grow longer with every step. The ticket in my hand turns into a leaf. As the train pulls away, a passenger I don't know waves at me from the window and smiles.",
+    day: "A deadline the next day.",
+    freud: ["Endless stairs: the anxiety and pressure of not making it in time.", "The missed train: fear of a lost opportunity.", "A ticket turning into a leaf: worry that what you hold is losing its value."],
+    jung: ["The train: life's collective current, social time.", "The stairs: passage between layers of consciousness.", "The leaf: the natural cycle; everything has its season.", "The waving passenger: the shadow, the part of you that set off in your place."],
+    sum: "For Freud, a dream that stages the fear of falling behind. For Jung, a transition dream calling you to find your own rhythm.",
+    people: ["Stranger on the train"] },
+  { id: "ucanev", iso: "2026-06-07", date: "June 7, 2026", mood: "Happy", sleep: "00:20 – 08:40",
+    title: "The house flying over the sea",
+    text: "My childhood home lifts off the ground and takes flight. A white cat sits by the window and shows us the way. Below us is a deep blue sea. I'm not afraid at all; I'm just curious where we're going.",
+    day: "Looked through old photos that day.",
+    freud: ["Flying: the wish for freedom and pleasure.", "The childhood home: the wish to return to a safe past.", "The white cat: an independent, intuitive side.", "The sea: a feeling of boundlessness."],
+    jung: ["The flying house: the whole self on the move, transformation.", "The white cat: a guide animal, intuition.", "The sea: the vastness of the unconscious.", "Curiosity: openness to individuation."],
+    sum: "For Freud, a wish to break free while carrying the safety of the past along. For Jung, a journey of transformation steered by intuition.",
+    people: [] },
+  { id: "ayna", iso: "2026-08-28", date: "August 28, 2026", mood: "Curious", sleep: "23:55 – 07:45",
+    title: "The young face in the mirror",
+    text: "I look into the bathroom mirror, but I see myself ten years younger. The clock runs backwards. My younger self hands me a key through the mirror and says something, but I can't hear it.",
+    day: "A birthday coming up.",
+    freud: ["The young face: fear of ageing, longing for the past.", "The clock running backwards: the wish to stop time.", "The unheard words: an unspoken, repressed thought."],
+    jung: ["The mirror: the line between persona and true self.", "The younger self: the inner child and forgotten potential.", "The key: a value carried from the past into the present.", "The silence: the message is not yet conscious."],
+    sum: "For Freud, a dream of resisting time. For Jung, a dream in which a past self leaves a key for the present.",
+    people: ["My younger self"] }
+];
+
+// theme = appears in more than one dream; symbol = belongs to one dream
+const BASE_SYMBOLS = [
+  { id: "su", label: "Water", type: "theme", dreams: ["kutuphane","ucanev"], freud: "Safety, the womb, withdrawal.", jung: "The vastness and depth of the unconscious." },
+  { id: "anahtar", label: "Key", type: "theme", dreams: ["kutuphane","ayna"], freud: "A wish kept locked away.", jung: "Crossing to the next threshold." },
+  { id: "rehber", label: "Guide figure", type: "theme", dreams: ["kutuphane","ucanev","ayna"], freud: "Looking for an authority to trust.", jung: "Wise elder, guide animal, inner child: three faces that show the way." },
+  { id: "yolculuk", label: "Journey", type: "theme", dreams: ["merdiven","ucanev"], freud: "The wish for change and the fear of missing out.", jung: "The path of individuation." },
+  { id: "zaman", label: "Time", type: "theme", dreams: ["merdiven","ayna"], freud: "Fear of falling behind and of ageing.", jung: "Personal rhythm clashing with social time." },
+  { id: "kitap", label: "Breathing books", type: "symbol", dreams: ["kutuphane"], freud: "—", jung: "Living memory, collective knowledge." },
+  { id: "altkat", label: "The lowest floor", type: "symbol", dreams: ["kutuphane"], freud: "Repressed thoughts.", jung: "A deep layer of the unconscious." },
+  { id: "merdivenS", label: "Growing stairs", type: "symbol", dreams: ["merdiven"], freud: "Pressure, not making it in time.", jung: "Passage between layers of consciousness." },
+  { id: "tren", label: "Missed train", type: "symbol", dreams: ["merdiven"], freud: "A lost opportunity.", jung: "The collective current." },
+  { id: "yaprak", label: "Leaf ticket", type: "symbol", dreams: ["merdiven"], freud: "Fear of losing value.", jung: "Natural cycle, season." },
+  { id: "kedi", label: "White cat", type: "symbol", dreams: ["ucanev"], freud: "An independent, intuitive side.", jung: "Guide animal." },
+  { id: "cocuklukevi", label: "Childhood home", type: "symbol", dreams: ["ucanev"], freud: "The safe past.", jung: "The self as a whole." },
+  { id: "aynaS", label: "Mirror", type: "symbol", dreams: ["ayna"], freud: "—", jung: "The line between persona and self." },
+  { id: "saat", label: "Backwards clock", type: "symbol", dreams: ["ayna"], freud: "The wish to stop time.", jung: "—" }
+];
+
+// the ready-made example added by the "Add a dream" demo
+const DEMO_NEW = { id: "demo-yeni", iso: "2026-09-21", date: "September 21, 2026", mood: "Mixed", sleep: "00:05 – 07:20",
+  title: "The room without a door",
+  text: "I'm in a white room with no door. There is a single window, and outside it's raining. I find two keys in my pocket, but neither fits anything. Then one of the walls slowly turns into water and I walk through it.",
+  day: "Applied for a new job.",
+  freud: ["A room without a door: feeling stuck.", "Keys that don't fit: worry that your tools aren't enough.", "A wall turning to water: the wish for an obstacle to dissolve on its own."],
+  jung: ["The white room: a beginning not yet written.", "Rain: cleansing and renewal.", "A wall turning to water: the unconscious opening a new passage."],
+  sum: "For Freud, feeling stuck and looking for a way out. For Jung, a door to renewal opening from an unexpected place.",
+  themes: ["su", "anahtar"],
+  symbols: [{ label: "Doorless room", freud: "Feeling stuck.", jung: "A new beginning." }, { label: "Rain", freud: "—", jung: "Cleansing." }],
+  people: [] };
+
+const THEME_IDS = BASE_SYMBOLS.filter(s => s.type === "theme").map(s => s.id);
+
+const MOODS = [
+  { key: "Calm", color: 0x8fe3d0 }, { key: "Happy", color: 0xffd27a }, { key: "Curious", color: 0xffb07a },
+  { key: "Mixed", color: 0xd9a0ff }, { key: "Sad", color: 0x7a9cff }, { key: "Anxious", color: 0xff7a9a }
+];
+const NO_MOOD = 0x5d5470;
+const MOOD_COL = Object.fromEntries(MOODS.map(m => [m.key, m.color]));
+const hex = c => "#" + c.toString(16).padStart(6, "0");
+const TR_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const dateLabel = iso => { const [y, m, d] = iso.split("-").map(Number); return `${TR_MONTHS.at(m - 1)} ${d}, ${y}`; };
+
+// ================= live state =================
+const state = { userDreams: [], morning: {}, lens: "all", moodOn: false, peopleOn: false, timeIdx: null, selected: "ayna", pendingSelect: null };
+
+
+// ================= model =================
+function buildModel() {
+  const dreams = [...BASE_DREAMS, ...state.userDreams]
+    .map(d => ({ ...d, mood: state.morning[d.id]?.mood || d.mood || "", sleep: state.morning[d.id]?.sleep || d.sleep || "" }))
+    .sort((a, b) => a.iso.localeCompare(b.iso));
+  const symbols = BASE_SYMBOLS.map(s => ({ ...s, dreams: [...s.dreams] }));
+  const byId = Object.fromEntries(symbols.map(s => [s.id, s]));
+  state.userDreams.forEach(d => {
+    (d.themes || []).forEach(t => { if (byId[t] && !byId[t].dreams.includes(d.id)) byId[t].dreams.push(d.id); });
+    (d.symbols || []).forEach((s, i) => symbols.push({ id: `u-${d.id}-${i}`, label: s.label, type: "symbol", dreams: [d.id], freud: s.freud || "—", jung: s.jung || "—" }));
+  });
+  const people = {};
+  dreams.forEach(d => (d.people || []).forEach(p => {
+    const k = String(p).trim(); if (!k) return;
+    const key = k.toLocaleLowerCase("tr");
+    (people[key] = people[key] || { id: "p-" + hashSeed(key), label: k, dreams: [] }).dreams.push(d.id);
+  }));
+  return { dreams, symbols, people: Object.values(people) };
+}
+function hashSeed(s) { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) % 2147483646 + 1; }
+
+// ================= panel =================
+const panel = document.getElementById("panel");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const li = arr => "<ul>" + (arr || []).map(x => `<li>${esc(x)}</li>`).join("") + "</ul>";
+let M = buildModel();
+let index = {};
+function reindex() {
+  index = {};
+  M.dreams.forEach(d => index[d.id] = { kind: "dream", d });
+  M.symbols.forEach(s => index[s.id] = { kind: s.type, s });
+  M.people.forEach(p => index[p.id] = { kind: "person", p });
+}
+reindex();
+const chip = id => { const n = index[id]; if (!n) return ""; const name = n.kind === "dream" ? dateLabel(n.d.iso) + " · " + n.d.title : (n.s || n.p).label; return `<button class="chip" type="button" data-go="${esc(id)}">${esc(name)}</button>`; };
+
+function renderPanel() {
+  let n = index[state.selected];
+  if (!n) { state.selected = M.dreams.at(-1).id; n = index[state.selected]; }
+  const id = state.selected, lens = state.lens, showF = lens !== "jung", showJ = lens !== "freud";
+  const kick = n.kind === "dream" ? (n.d.date || dateLabel(n.d.iso)) : n.kind === "theme" ? "Shared theme · " + n.s.dreams.length + " dreams" : n.kind === "person" ? "Person · " + n.p.dreams.length + (n.p.dreams.length > 1 ? " dreams" : " dream") : "Symbol";
+  let h = `<div class="paneltop"><p class="kicker">${esc(kick)}</p><button type="button" class="btn primary" id="openAdd">Add a dream</button></div>`;
+  if (n.kind === "dream") {
+    const d = n.d, syms = M.symbols.filter(s => s.dreams.includes(d.id)), ppl = M.people.filter(p => p.dreams.includes(d.id));
+    h += `<h2>${esc(d.title)}</h2><p>${esc(d.text)}</p>${d.day ? `<p class="meta"><b>Day residue:</b> ${esc(d.day)}</p>` : ""}`;
+    if (d.mood || d.sleep) h += `<p class="meta">${d.mood ? `<b>Mood:</b> ${esc(d.mood)}` : ""}${d.mood && d.sleep ? " · " : ""}${d.sleep ? `<b>Sleep:</b> ${esc(d.sleep)}` : ""}</p>`;
+    if (showF) h += `<h3 class="freud">Freud</h3>${li(d.freud)}`;
+    if (showJ) h += `<h3 class="jung">Jung</h3>${li(d.jung)}`;
+    if (lens === "all" && d.sum) h += `<p class="summary">${esc(d.sum)}</p>`;
+    h += `<h3>Symbols in this dream</h3><div class="chips">${syms.map(s => chip(s.id)).join("")}</div>`;
+    if (ppl.length) h += `<h3>People</h3><div class="chips">${ppl.map(p => chip(p.id)).join("")}</div>`;
+    h += `<div class="morning"><h3 style="margin:0">Morning note</h3>
+      <div class="fields">
+        <select class="in" id="mMood" aria-label="Mood"><option value="">Choose mood</option>${MOODS.map(m => `<option${m.key === d.mood ? " selected" : ""}>${m.key}</option>`).join("")}</select>
+        <input class="in" id="mSleep" placeholder="Sleep: 00:30 – 08:00" value="${esc(d.sleep)}" aria-label="Sleep time" style="flex:1;min-width:140px">
+        <button type="button" class="btn" id="mSave">Save</button>
+      </div><div class="status" id="mStatus"></div></div>`;
+  } else if (n.kind === "person") {
+    const p = n.p;
+    h += `<h2>${esc(p.label)}</h2><p>${p.dreams.length > 1 ? `Appeared in ${p.dreams.length} dreams.` : "Appeared in one dream."}</p>
+      <h3>Appears in</h3><div class="chips">${p.dreams.map(chip).join("")}</div>`;
+  } else {
+    const s = n.s;
+    h += `<h2>${esc(s.label)}</h2>`;
+    if (showF) h += `<h3 class="freud">Freud</h3><p>${esc(s.freud)}</p>`;
+    if (showJ) h += `<h3 class="jung">Jung</h3><p>${esc(s.jung)}</p>`;
+    h += `<h3>Appears in</h3><div class="chips">${s.dreams.map(chip).join("")}</div>`;
+  }
+  panel.innerHTML = h;
+  panel.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => select(b.dataset.go)));
+  document.getElementById("openAdd").addEventListener("click", renderAddForm);
+  const save = document.getElementById("mSave");
+  if (save) {
+    const st = document.getElementById("mStatus");
+    save.addEventListener("click", () => {
+      state.morning[id] = { mood: document.getElementById("mMood").value, sleep: document.getElementById("mSleep").value.trim().slice(0, 60) };
+      refresh(); const s2 = document.getElementById("mStatus"); if (s2) s2.textContent = "Saved (in the demo, only for this visit).";
+    });
+  }
+}
+
+// ---------- add a dream (demo) ----------
+function renderAddForm() {
+  const added = state.userDreams.some(d => d.id === DEMO_NEW.id);
+  panel.innerHTML = `<div class="paneltop"><p class="kicker">New dream</p><button type="button" class="btn" id="closeAdd">Cancel</button></div>
+    <h2>Tell your dream</h2>
+    <p class="note">In the real app, the dream is written into this form. Claude interprets it through Freud and Jung, pulls out its symbols and shared themes, and adds it to the brain as a new neuron.</p>
+    <p class="note">In this demo, a ready-made interpreted example is added.</p>
+    <form class="add" id="addForm">
+      <label class="f">Dream<textarea class="in" id="aText" readonly>${esc(DEMO_NEW.text)}</textarea></label>
+      <div class="two">
+        <label class="f">Date<input class="in" type="date" value="${DEMO_NEW.iso}" readonly></label>
+        <label class="f">Mood<input class="in" value="${DEMO_NEW.mood}" readonly></label>
+        <label class="f">Sleep time<input class="in" value="${DEMO_NEW.sleep}" readonly></label>
+      </div>
+      <div class="row"><button type="submit" class="btn primary" id="aGo"${added ? " disabled" : ""}>Interpret and add</button></div>
+      <div class="status" id="aStatus">${added ? "The example dream is already in the network." : ""}</div>
+    </form>`;
+  document.getElementById("closeAdd").addEventListener("click", renderPanel);
+  document.getElementById("addForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const go = document.getElementById("aGo"), st = document.getElementById("aStatus");
+    go.disabled = true; st.textContent = "Interpreting...";
+    setTimeout(() => { state.userDreams = [DEMO_NEW]; state.pendingSelect = DEMO_NEW.id; refresh(); }, 1400);
+  });
+}
+
+// ================= sound =================
+const audio = (() => {
+  let ctx = null, master = null, on = false;
+  function ensure() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420; lp.Q.value = 6; lp.connect(master);
+    [55, 82.4, 110.6].forEach((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? "triangle" : "sine"; o.frequency.value = f; o.detune.value = (i - 1) * 7; const g = ctx.createGain(); g.gain.value = i === 2 ? .12 : .28; o.connect(g); g.connect(lp); o.start(); });
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = .06; lg.gain.value = 220; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * .5;
+    const ns = ctx.createBufferSource(); ns.buffer = buf; ns.loop = true;
+    const nf = ctx.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .7;
+    const ng = ctx.createGain(); ng.gain.value = .05; ns.connect(nf); nf.connect(ng); ng.connect(master); ns.start();
+  }
+  return {
+    toggle() { ensure(); on = !on; if (on) ctx.resume(); master.gain.setTargetAtTime(on ? .5 : 0, ctx.currentTime, .6); return on; },
+    blip(kind) {
+      if (!on || !ctx) return;
+      const f = { dream: 392, theme: 587, symbol: 784, person: 523 }[kind] || 660, t = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain(), d = ctx.createDelay(), fb = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(f * 1.5, t); o.frequency.exponentialRampToValueAtTime(f, t + .08);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.22, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .9);
+      d.delayTime.value = .18; fb.gain.value = .35;
+      o.connect(g); g.connect(ctx.destination); g.connect(d); d.connect(fb); fb.connect(d); d.connect(ctx.destination);
+      o.start(t); o.stop(t + 1);
+    }
+  };
+})();
+
+// ================= 3D =================
+const stage = document.getElementById("stage");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let seed = 23; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+let G = null;
+function select(id) { state.selected = id; renderPanel(); G?.applySelection(); audio.blip(index[id]?.kind); }
+
+function start3D() {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x000000, 0);
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000000, 0.0019);
+  const camera = new THREE.PerspectiveCamera(48, 1, 1, 4000);
+  camera.position.set(-380, 95, 400);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  Object.assign(controls, { enableDamping: true, dampingFactor: .07, enablePan: false, minDistance: 170, maxDistance: 1000, autoRotateSpeed: .55, rotateSpeed: .7 });
+
+  const gc = document.createElement("canvas"); gc.width = gc.height = 128;
+  const g2 = gc.getContext("2d"), grd = g2.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, "rgba(255,255,255,1)"); grd.addColorStop(.18, "rgba(255,255,255,.75)"); grd.addColorStop(.45, "rgba(255,255,255,.18)"); grd.addColorStop(1, "rgba(255,255,255,0)");
+  g2.fillStyle = grd; g2.fillRect(0, 0, 128, 128);
+  const glowTex = new THREE.CanvasTexture(gc);
+  const glow = (color, size, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false })); s.scale.set(size, size, 1); return s; };
+
+  // ---- brain tissue: two hemispheres of faint neurons ----
+  seed = 23;
+  const N = 900, pts = [];
+  while (pts.length < N) {
+    const s = rnd() < .5 ? -1 : 1;
+    const u = rnd() * 2 - 1, th = rnd() * 6.283, r = Math.pow(rnd(), .35), q = Math.sqrt(1 - u * u);
+    let x = q * Math.cos(th), y = u, z = q * Math.sin(th);
+    x = s * 92 + x * 118 * r; y = y * 138 * r; z = z * 200 * r;
+    if (Math.abs(x) < 10) continue;
+    if (y < -95 && Math.abs(z) < 60) continue;
+    y += Math.sin(z * .03 + x * .02) * 8;
+    pts.push(V(x, y, z));
+  }
+  const pg = new THREE.BufferGeometry().setFromPoints(pts);
+  const pc = new Float32Array(N * 3), cA = new THREE.Color(0x8e5bc8), cB = new THREE.Color(0xe6a0f0), tmp = new THREE.Color();
+  pts.forEach((p, i) => { tmp.copy(cA).lerp(cB, rnd()); pc.set([tmp.r, tmp.g, tmp.b], i * 3); });
+  pg.setAttribute("color", new THREE.BufferAttribute(pc, 3));
+  scene.add(new THREE.Points(pg, new THREE.PointsMaterial({ size: 7, map: glowTex, vertexColors: true, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })));
+  const seg = [], bgLinks = [];
+  for (let i = 0; i < N; i++) {
+    const near = [];
+    for (let j = 0; j < N; j++) if (i !== j) { const d = pts[i].distanceToSquared(pts[j]); if (d < 1600) near.push([d, j]); }
+    near.sort((a, b) => a[0] - b[0]).slice(0, 3).forEach(([, j]) => { if (j > i) { seg.push(pts[i], pts[j]); bgLinks.push([i, j]); } });
+  }
+  scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seg), new THREE.LineBasicMaterial({ color: 0x6d3fa8, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false })));
+  const bgPulses = [];
+  for (let i = 0; i < 70; i++) { const s = glow(0xd8a8ff, 6, .45); scene.add(s); bgPulses.push({ s, l: bgLinks[Math.floor(rnd() * bgLinks.length)], t: rnd(), v: .01 + rnd() * .015 }); }
+
+  // ---- scan plane sweeping the brain ----
+  const scan = new THREE.Mesh(new THREE.PlaneGeometry(520, 620), new THREE.MeshBasicMaterial({ color: 0xb070e0, transparent: true, opacity: .05, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scan.rotation.x = -Math.PI / 2; scene.add(scan);
+  const scanEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(520, 620)), new THREE.LineBasicMaterial({ color: 0xc890f0, transparent: true, opacity: .35 }));
+  scanEdge.rotation.x = -Math.PI / 2; scene.add(scanEdge);
+
+  // ---- the dream graph, rebuilt whenever dreams or notes change ----
+  const graph = new THREE.Group(); scene.add(graph);
+  const labels = document.getElementById("labels");
+  const hudL = document.getElementById("hudL"), hudR = document.getElementById("hudR"), hudB = document.getElementById("hudB");
+  const COL = { dream: 0xc9a0ff, theme: 0xf2c0ff, symbol: 0x9a78d0, person: 0xffc6e8 };
+  const LENS_COL = { freud: 0xff9ec7, jung: 0xb9a0ff };
+  const RAD = { dream: 9, theme: 5, symbol: 3.6, person: 4.5 };
+  const BASE_POS = { kutuphane: V(-125, 40, 85), merdiven: V(125, 50, 70), ucanev: V(40, -70, -110), ayna: V(-95, -55, -95), "demo-yeni": V(135, -40, -40) };
+  const themeOff = { su: V(0, -40, 40), anahtar: V(-50, 10, 0), rehber: V(0, 60, 0), yolculuk: V(30, 20, 30), zaman: V(0, 30, -20) };
+  let nodes = [], edges = [], pulses = [], hit = [], byId = {};
+
+  function disposeGraph() {
+    graph.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); });
+    graph.clear(); labels.textContent = ""; nodes = []; edges = []; pulses = []; hit = []; byId = {};
+  }
+
+  function build() {
+    disposeGraph();
+    const P = {};
+    let k = 0;
+    M.dreams.forEach(d => {
+      if (BASE_POS[d.id]) { P[d.id] = BASE_POS[d.id].clone(); return; }
+      const a = .9 + k * 2.399, y = ((k % 3) - 1) * 72; k++;
+      P[d.id] = V(Math.cos(a) * 150, y, Math.sin(a) * 135);
+    });
+    const centroid = ids => ids.reduce((acc, i) => acc.add(P[i].clone()), V(0, 0, 0)).multiplyScalar(1 / ids.length);
+    const local = {};
+    M.symbols.forEach(s => {
+      if (s.type === "theme") { P[s.id] = centroid(s.dreams).add(themeOff[s.id] || V(0, 0, 0)); return; }
+      const d = s.dreams[0], n = (local[d] = (local[d] || 0) + 1), base = P[d];
+      const out = base.x < -20 ? -1 : base.x > 20 ? 1 : 0;
+      const ang = n * 2.4 + hashSeed(d) % 7, el = n % 2 ? .5 : -.4;
+      P[s.id] = base.clone().add(V(Math.cos(ang) * 62 + out * 40, Math.sin(el) * 62 + (base.y < -30 ? -20 : 0), Math.sin(ang) * 62 + (base.z < -50 ? -40 : 0)));
+    });
+    M.people.forEach((p, i) => { const a = i / Math.max(1, M.people.length) * 6.283; P[p.id] = V(Math.cos(a) * 245, 125 + Math.sin(i * 1.7) * 35, Math.sin(a) * 245); });
+
+    const all = [...M.dreams.map(d => ({ id: d.id, kind: "dream", label: dateLabel(d.iso), ref: d })),
+                 ...M.symbols.map(s => ({ id: s.id, kind: s.type, label: s.label, ref: s })),
+                 ...M.people.map(p => ({ id: p.id, kind: "person", label: p.label, ref: p }))];
+    all.forEach(n => {
+      seed = hashSeed(n.id);
+      const g = new THREE.Group(); g.position.copy(P[n.id]); graph.add(g);
+      n.pos = P[n.id]; n.group = g;
+      const r = n.kind === "person" ? RAD.person * (1 + .35 * (n.ref.dreams.length - 1)) : RAD[n.kind];
+      n.r = r;
+      n.coreMat = new THREE.MeshBasicMaterial({ color: COL[n.kind], transparent: true });
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), n.coreMat));
+      n.glow = glow(COL[n.kind], r * 7, n.kind === "symbol" ? .6 : .9); g.add(n.glow);
+      n.halo = glow(0xffffff, r * 12, 0); g.add(n.halo);
+      const h = new THREE.Mesh(new THREE.SphereGeometry(r * 2.6, 8, 6), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      h.userData.id = n.id; g.add(h); hit.push(h);
+      const nd = { dream: 14, theme: 9, symbol: 6, person: 5 }[n.kind];
+      n.dendMat = new THREE.LineBasicMaterial({ color: COL[n.kind], transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false });
+      for (let i = 0; i < nd; i++) {
+        const dir = V(rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1).normalize(), L = r * (2.2 + rnd() * 2.6);
+        const a = dir.clone().multiplyScalar(r * .9);
+        const m = dir.clone().multiplyScalar(r + L * .5).add(V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(L * .5));
+        const b = dir.clone().multiplyScalar(r + L).add(V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(L * .6));
+        const c = new THREE.CatmullRomCurve3([a, m, b]);
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(c.getPoints(10)), n.dendMat));
+        const f0 = c.getPoint(.6), f1 = f0.clone().add(V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(L * .7));
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([f0, f1]), n.dendMat));
+      }
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "lbl " + n.kind; b.textContent = n.label;
+      b.setAttribute("aria-label", n.kind === "dream" ? n.ref.title : n.label);
+      b.addEventListener("click", () => select(n.id));
+      labels.appendChild(b); n.lbl = b;
+      nodes.push(n); byId[n.id] = n;
+    });
+    const link = (aId, dreamId, kind) => {
+      const a = P[dreamId], b = P[aId], d = a.distanceTo(b);
+      seed = hashSeed(aId + "|" + dreamId);
+      const j = () => V(rnd() - .5, rnd() - .5, rnd() - .5).multiplyScalar(d * .28);
+      const curve = new THREE.CatmullRomCurve3([a, a.clone().lerp(b, .33).add(j()), a.clone().lerp(b, .66).add(j()), b]);
+      const base = kind === "person" ? 0xd98ac0 : 0x8d5ec8;
+      const e = { a: aId, b: dreamId, kind, curve, base, mat: new THREE.LineBasicMaterial({ color: base, transparent: true, opacity: .38, blending: THREE.AdditiveBlending, depthWrite: false }) };
+      e.line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)), e.mat); graph.add(e.line);
+      for (let i = 0; i < 2; i++) { const s = glow(kind === "person" ? 0xffd6ee : 0xf4d0ff, 9, .55); graph.add(s); pulses.push({ s, curve, e, t: rnd(), v: .0025 + rnd() * .003, dir: i ? -1 : 1 }); }
+      edges.push(e);
+    };
+    M.symbols.forEach(s => s.dreams.forEach(d => link(s.id, d, s.type)));
+    M.people.forEach(p => p.dreams.forEach(d => link(p.id, d, "person")));
+    applyAll();
+  }
+
+  const dreamVisible = id => state.timeIdx == null || M.dreams.findIndex(d => d.id === id) <= state.timeIdx;
+  const lensOk = n => { if (state.lens === "all" || n.kind === "dream" || n.kind === "person") return true; const v = n.ref[state.lens]; return !!v && v !== "—"; };
+  function applyAll() {
+    nodes.forEach(n => {
+      const ds = n.kind === "dream" ? [n.id] : n.ref.dreams;
+      let vis = ds.some(dreamVisible);
+      if (n.kind === "person" && !state.peopleOn) vis = false;
+      n.visible = vis; n.group.visible = vis; n.lbl.hidden = !vis;
+      let c = COL[n.kind];
+      if (n.kind === "dream" && state.moodOn) c = MOOD_COL[n.ref.mood] ?? NO_MOOD;
+      if ((n.kind === "theme" || n.kind === "symbol") && state.lens !== "all" && lensOk(n)) c = LENS_COL[state.lens];
+      n.coreMat.color.setHex(c); n.glow.material.color.setHex(c); n.dendMat.color.setHex(c);
+    });
+    edges.forEach(e => { const vis = !!byId[e.a]?.visible && dreamVisible(e.b); e.visible = vis; e.line.visible = vis; });
+    pulses.forEach(p => p.s.visible = p.e.visible);
+    applySelection();
+    const shown = M.dreams.filter(d => dreamVisible(d.id)).length;
+    hudL.innerHTML = `Neural record archive<br>Subject: Demo · ${shown} dreams · ${nodes.filter(n => n.visible).length} nodes`;
+  }
+  function applySelection() {
+    const id = state.selected, linked = new Set([id]);
+    edges.forEach(e => { if (!e.visible) return; if (e.a === id) linked.add(e.b); if (e.b === id) linked.add(e.a); });
+    nodes.forEach(n => {
+      const on = linked.has(n.id) && lensOk(n);
+      n.coreMat.opacity = on ? 1 : .25; n.glow.material.opacity = on ? (n.kind === "symbol" ? .7 : 1) : .14;
+      n.dendMat.opacity = on ? .6 : .1; n.halo.material.opacity = n.id === id ? .35 : 0;
+      n.lbl.classList.toggle("dim", !on);
+    });
+    edges.forEach(e => { const on = (e.a === id || e.b === id) && lensOk(byId[e.a]); e.on = on; e.mat.opacity = on ? .95 : .1; e.mat.color.setHex(on ? 0xe8c4ff : e.base); });
+  }
+
+  // ---- input ----
+  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
+  renderer.domElement.addEventListener("pointerdown", ev => { down = [ev.clientX, ev.clientY]; });
+  renderer.domElement.addEventListener("pointerup", ev => {
+    if (!down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 5) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    mouse.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+    ray.setFromCamera(mouse, camera);
+    const h = ray.intersectObjects(hit.filter(x => byId[x.userData.id]?.visible))[0];
+    if (h) select(h.object.userData.id);
+  });
+  const spinBtn = document.getElementById("spin");
+  const setSpin = on => { controls.autoRotate = on; spinBtn.textContent = on ? "Stop rotation" : "Rotate"; };
+  setSpin(!reduce);
+  controls.addEventListener("start", () => setSpin(false));
+  spinBtn.addEventListener("click", () => setSpin(!controls.autoRotate));
+
+  const resize = () => { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(stage); resize();
+
+  const v = new THREE.Vector3(); let frameN = 0;
+  (function frame() {
+    requestAnimationFrame(frame);
+    controls.update();
+    const tt = performance.now() / 1000;
+    if (!reduce) {
+      pulses.forEach(p => {
+        if (!p.s.visible) return;
+        p.t = (p.t + p.v * (p.e.on ? 2.2 : 1)) % 1;
+        p.s.position.copy(p.curve.getPoint(p.dir > 0 ? p.t : 1 - p.t));
+        p.s.material.opacity = !p.e.on ? .08 : .95;
+        const sc = p.e.on ? 13 : 8; p.s.scale.set(sc, sc, 1);
+      });
+      bgPulses.forEach(p => { p.t += p.v; if (p.t >= 1) { p.t = 0; p.l = bgLinks[Math.floor(Math.random() * bgLinks.length)]; } p.s.position.copy(pts[p.l[0]]).lerp(pts[p.l[1]], p.t); });
+      nodes.forEach((n, i) => { const k = 1 + Math.sin(tt * 1.6 + i) * .08; n.glow.scale.set(n.r * 7 * k, n.r * 7 * k, 1); });
+      const sy = Math.sin(tt * .45) * 150; scan.position.y = sy; scanEdge.position.y = sy;
+    }
+    if (frameN++ % 12 === 0) {
+      const az = (THREE.MathUtils.radToDeg(controls.getAzimuthalAngle()) + 360) % 360;
+      hudR.innerHTML = `Sync ${az.toFixed(1).padStart(5, "0")}°<br>Signal ${(62 + Math.sin(tt * .7) * 21 + Math.random() * 4).toFixed(1)} Hz`;
+      hudB.textContent = "Scan active · layer " + String(Math.round(scan.position.y + 150)).padStart(3, "0");
+    }
+    renderer.render(scene, camera);
+    const w = stage.clientWidth, h = stage.clientHeight;
+    nodes.forEach(n => {
+      if (!n.visible) return;
+      v.copy(n.pos).project(camera);
+      if (v.z > 1) { n.lbl.style.visibility = "hidden"; return; }
+      n.lbl.style.visibility = "visible";
+      const depth = camera.position.distanceTo(n.pos);
+      const off = n.r * 2.2 / Math.max(.4, depth / 500);
+      n.lbl.style.opacity = Math.max(.35, Math.min(1, 1.35 - depth / 900)).toFixed(2);
+      n.lbl.style.transform = `translate(${(v.x + 1) / 2 * w}px, ${(1 - v.y) / 2 * h + off}px) translate(-50%, 0)`;
+    });
+  })();
+
+  G = { applySelection, applyAll, build };
+  build();
+}
+
+// ================= controls =================
+document.querySelectorAll("[data-lens]").forEach(b => b.addEventListener("click", () => {
+  state.lens = b.dataset.lens;
+  document.querySelectorAll("[data-lens]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  G?.applyAll(); if (!document.getElementById("addForm")) renderPanel();
+}));
+const tMood = document.getElementById("tMood"), tPeople = document.getElementById("tPeople"), tSound = document.getElementById("tSound"), moodKey = document.getElementById("moodKey");
+moodKey.innerHTML = MOODS.map(m => `<span><i style="background:${hex(m.color)}"></i>${m.key}</span>`).join("") + `<span><i style="background:${hex(NO_MOOD)}"></i>No note</span>`;
+tMood.addEventListener("click", () => { state.moodOn = !state.moodOn; tMood.setAttribute("aria-pressed", String(state.moodOn)); moodKey.hidden = !state.moodOn; G?.applyAll(); });
+tPeople.addEventListener("click", () => {
+  state.peopleOn = !state.peopleOn; tPeople.setAttribute("aria-pressed", String(state.peopleOn));
+  if (!state.peopleOn && index[state.selected]?.kind === "person") { state.selected = M.dreams.at(-1).id; renderPanel(); }
+  G?.applyAll();
+});
+tSound.addEventListener("click", () => { const on = audio.toggle(); tSound.setAttribute("aria-pressed", String(on)); });
+
+const slider = document.getElementById("slider"), sliderOut = document.getElementById("sliderOut"), playBtn = document.getElementById("play");
+function syncSlider() {
+  slider.max = String(M.dreams.length - 1);
+  if (state.timeIdx == null) slider.value = slider.max;
+  sliderOut.textContent = state.timeIdx == null ? "All" : dateLabel(M.dreams[Number(slider.value)].iso);
+}
+function showUpTo(i) {
+  state.timeIdx = i >= M.dreams.length - 1 ? null : i;
+  state.selected = M.dreams[i].id;
+  syncSlider(); G?.applyAll(); renderPanel();
+}
+slider.addEventListener("input", () => showUpTo(Number(slider.value)));
+let playTimer = null;
+playBtn.addEventListener("click", () => {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; playBtn.textContent = "Play"; return; }
+  let i = 0; playBtn.textContent = "Stop";
+  const step = () => {
+    slider.value = String(i); showUpTo(i); audio.blip("dream");
+    if (++i >= M.dreams.length) { clearInterval(playTimer); playTimer = null; playBtn.textContent = "Play"; }
+  };
+  step(); playTimer = setInterval(step, 1800);
+});
+
+function refresh() {
+  const sel = state.selected;
+  M = buildModel(); reindex();
+  if (state.pendingSelect && index[state.pendingSelect]) { state.selected = state.pendingSelect; state.pendingSelect = null; state.timeIdx = null; }
+  else if (!index[sel]) state.selected = M.dreams.at(-1).id;
+  if (state.timeIdx != null && state.timeIdx >= M.dreams.length - 1) state.timeIdx = null;
+  syncSlider(); G?.build();
+  if (!document.getElementById("addForm") || state.selected !== sel) renderPanel();
+}
+
+// ================= boot =================
+try {
+  if (!window.THREE || !THREE.OrbitControls) throw new Error("three");
+  start3D();
+} catch (err) {
+  const f = document.createElement("div"); f.className = "fallback";
+  f.textContent = "The 3D view could not open on this device. You can still read the entries in the panel.";
+  stage.appendChild(f);
+}
+syncSlider(); renderPanel();
+
+
+</script>
+</body>
+</html>
